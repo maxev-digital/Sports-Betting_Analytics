@@ -1,0 +1,999 @@
+# NBA Live Betting Dashboard - Complete Product Guide
+
+## 📋 Table of Contents
+1. [System Overview](#system-overview)
+2. [Educational Articles for Users](#educational-articles)
+3. [Complete Feature Roadmap](#feature-roadmap)
+4. [Sportsbook Affiliate Integration](#affiliate-integration)
+5. [Revenue Model](#revenue-model)
+
+---
+
+## 🎯 System Overview
+
+### What We're Building
+A sophisticated NBA live betting dashboard that combines:
+- **Real-time odds feeds** from The Odds API
+- **Live game stats** (ESPN GameCast style)
+- **Multiple betting models** with intelligent model selection
+- **Edge detection** highlighting betting opportunities
+- **Multi-game monitoring** - watch many games at once
+- **Unit sizing recommendations** based on edge confidence
+- **Sportsbook affiliate integration** for monetization
+
+### Core Value Proposition
+The tool does all the work - users just watch for highlighted opportunities. The system calculates true odds, compares to market lines, and recommends bet size based on perceived edge.
+
+### Technology Stack
+- **Backend**: FastAPI (Python)
+- **Frontend**: React + TypeScript + Tailwind CSS
+- **Data Sources**: The Odds API (expandable to Sportradar, ESPN)
+- **Models**: Pace-based, Momentum, Regression, Situational, ML ensemble
+
+---
+
+## 📚 Educational Articles for Users
+
+### Section 1: Understanding Live Betting Fundamentals
+
+#### Article 1: "What is Live Betting and Why It Matters"
+- Definition of live betting vs pregame betting
+- How odds move during games
+- The concept of "closing line value"
+- Why live betting can offer more opportunities than pregame
+- Common mistakes beginners make
+
+#### Article 2: "Reading Live Odds: A Complete Guide"
+- American odds explained (-110, +120, etc.)
+- How to calculate implied probability
+- Understanding juice/vig
+- Why odds differ between sportsbooks
+- The importance of line shopping
+
+#### Article 3: "What is Expected Value (EV)?"
+- Breaking down the EV formula
+- Positive EV vs Negative EV betting
+- Why you can lose positive EV bets (and that's okay)
+- Long-term thinking in sports betting
+- Real examples with NBA totals
+
+#### Article 4: "Understanding Projections vs Market Lines"
+- What our projections represent
+- Why projections differ from odds
+- The concept of "edge"
+- When projections are most reliable
+- Confidence levels explained (LOW/MEDIUM/HIGH)
+
+#### Article 5: "Pace-Based Projections Explained"
+- How pace affects total points scored
+- Early game vs late game pace differences
+- Why first quarter projections are less reliable
+- Adjusting for game script and blowouts
+- The role of pregame totals in our model
+
+### Section 2: Using the Dashboard
+
+#### Article 6: "Dashboard Overview: Your Command Center"
+- Navigation basics
+- Understanding the game cards
+- Color coding system (green edges, yellow cautions, red avoid)
+- Filtering games by status (live, upcoming, final)
+- Customizing your view
+
+#### Article 7: "Reading a Game Card"
+- Live score display
+- Quarter and time remaining
+- Current total vs pregame total
+- Projected final total
+- Edge calculation
+- Bookmaker odds comparison
+- Recommendation badges (OVER/UNDER)
+
+#### Article 8: "The Edge Indicator System"
+- What is an "edge" in our system?
+- Minimum edge thresholds (5+ points)
+- Why bigger edges don't always mean better bets
+- Edge vs confidence relationship
+- When to trust large edges
+
+#### Article 9: "Confidence Levels: LOW, MEDIUM, HIGH"
+- How confidence is calculated
+- Quarter-by-quarter confidence progression
+- Why early game = LOW confidence
+- Factors that increase confidence
+- Should you bet LOW confidence edges?
+
+#### Article 10: "Multi-Game Monitoring"
+- Watching multiple games simultaneously
+- Priority sorting by edge size
+- Setting up alerts (future feature)
+- Game status indicators
+- Refreshing data manually vs auto-refresh
+
+### Section 3: Betting Models & Strategy
+
+#### Article 11: "The Pace-Based Model Deep Dive"
+- How current pace is calculated
+- Weighting pregame vs live pace
+- Why blowouts can skew projections
+- Adjustments we make for quarter progression
+- Model limitations and when it fails
+
+#### Article 12: "Momentum Model: Riding Hot Quarters"
+- Recent scoring trends vs overall pace
+- Quarter momentum indicators
+- When teams deviate from season norms
+- Combining momentum with pace
+- Real game examples
+
+#### Article 13: "Regression to the Mean"
+- What is regression and why it matters
+- Identifying outlier performances
+- When totals are "due to correct"
+- Balancing regression with momentum
+- Avoiding the gambler's fallacy
+
+#### Article 14: "Situational Betting: Context Matters"
+- Back-to-back games and fatigue
+- Rest advantages
+- Travel factors (east to west coast)
+- Altitude adjustments (Denver)
+- Revenge game narratives (do they matter?)
+
+#### Article 15: "Garbage Time: Friend or Foe?"
+- Detecting garbage time scenarios
+- How blowouts affect totals
+- When to fade projections in blowouts
+- Bench players and pace changes
+- Late game fouling impact
+
+#### Article 16: "Advanced Models Coming Soon"
+- Player prop integration roadmap
+- Team-specific tendency models
+- Referee impact models
+- Lineup-based projections
+- Machine learning enhancements
+
+### Section 4: Bankroll Management
+
+#### Article 17: "Bankroll Management 101"
+- What is a bankroll?
+- Never bet more than you can afford to lose
+- The 1-5% rule per bet
+- Tracking your bets
+- Variance and downswings
+
+#### Article 18: "Unit Sizing Based on Edge"
+- What is a "unit"?
+- Edge-based unit recommendations
+- Kelly Criterion basics
+- Fractional Kelly for safety
+- When to bet more vs less
+
+#### Article 19: "The Kelly Criterion Explained"
+- Full Kelly formula
+- Why full Kelly is too aggressive
+- Quarter Kelly and Half Kelly
+- Calculating optimal bet size
+- Real examples from our dashboard
+
+#### Article 20: "Win Rate vs ROI"
+- Why 50% win rate can still be profitable
+- Understanding return on investment
+- Closing line value as a success metric
+- Long-term expectation vs short-term results
+- Sample size matters (1000+ bets)
+
+#### Article 21: "Tracking Your Performance"
+- Why tracking is essential
+- Metrics to monitor (units won, ROI, CLV)
+- Using spreadsheets or bet tracking apps
+- Identifying your strengths and weaknesses
+- Course correction strategies
+
+### Section 5: Market Dynamics
+
+#### Article 22: "How Sportsbooks Set Live Lines"
+- Traders vs algorithms
+- Sharp vs public money
+- Line movement speed
+- Getting the best available price
+- Why lines differ across books
+
+#### Article 23: "Line Shopping: The Easiest Edge"
+- Comparing odds across sportsbooks
+- Half-point and full-point differences
+- How much does line shopping add to ROI?
+- Best books for NBA totals
+- Using our multi-book display
+
+#### Article 24: "Steam Moves and Why They Matter"
+- What is a steam move?
+- Identifying sharp money
+- Following or fading the market
+- Reverse line movement explained
+- Our system's approach to market moves
+
+#### Article 25: "Beating the Closing Line"
+- What is CLV (Closing Line Value)?
+- Why CLV predicts long-term success
+- Timing your bets for best CLV
+- Live betting and CLV challenges
+- Using our historical CLV tracker (future)
+
+#### Article 26: "The Myth of 'Due' Results"
+- Gambler's fallacy in live betting
+- Independence of possessions
+- Hot hand vs regression
+- Randomness in small samples
+- Trusting the process, not results
+
+### Section 6: Advanced Strategies
+
+#### Article 27: "Middling Opportunities"
+- What is a middle?
+- Live betting middle scenarios
+- Risk vs reward of middling
+- When the market creates middles
+- Real NBA total middle examples
+
+#### Article 28: "Hedging Your Bets"
+- What is hedging?
+- When to hedge (and when not to)
+- Guaranteed profit scenarios
+- Reducing variance vs maximizing EV
+- Live hedging tools in our dashboard
+
+#### Article 29: "Correlated Parlays"
+- What makes bets correlated?
+- Why sportsbooks limit correlated parlays
+- Live betting correlation opportunities
+- Game total + team total correlations
+- Risk management with parlays
+
+#### Article 30: "Arbitrage Betting (Guaranteed Profit)"
+- What is arbitrage?
+- Live betting arb opportunities
+- Calculating arb profit margins
+- Execution speed requirements
+- Book limits and account management
+
+#### Article 31: "Beating the Juice: The Grind"
+- Understanding -110 standard vig
+- Reduced juice sportsbooks
+- How juice impacts your ROI
+- Finding the best prices
+- Long-term impact of juice
+
+### Section 7: Psychology & Discipline
+
+#### Article 32: "Emotional Control in Live Betting"
+- The fast-paced nature of live betting
+- Avoiding tilt after losses
+- FOMO (Fear of Missing Out)
+- Sticking to your strategy
+- Taking breaks when needed
+
+#### Article 33: "The Danger of Chasing Losses"
+- What is loss chasing?
+- Why it destroys bankrolls
+- Recognizing the signs
+- Setting loss limits
+- Tomorrow is another day
+
+#### Article 34: "Confirmation Bias in Betting"
+- Seeing what you want to see
+- Cherry-picking data
+- Why bad beats stick in memory
+- Objective analysis over narratives
+- Letting the dashboard guide you
+
+#### Article 35: "Patience: The Bettor's Virtue"
+- Not every game has an edge
+- Waiting for high-quality spots
+- Quality over quantity
+- The 80/20 rule in betting
+- Trust the process
+
+### Section 8: Technical Setup
+
+#### Article 36: "Setting Up Your Betting Accounts"
+- Recommended sportsbooks for NBA
+- Account verification process
+- Deposit methods and limits
+- Withdrawal timelines
+- Managing multiple accounts
+
+#### Article 37: "Using Multiple Screens Effectively"
+- Dashboard on one screen, book on another
+- Mobile + desktop setups
+- Browser tab organization
+- Streaming games while monitoring odds
+- Hardware recommendations
+
+#### Article 38: "API Integration Basics" (Advanced Users)
+- Understanding our data sources
+- The Odds API rate limits
+- Refresh intervals explained
+- Why data sometimes lags
+- Future API upgrades planned
+
+### Section 9: NBA-Specific Knowledge
+
+#### Article 39: "NBA Pace Statistics"
+- What is pace in basketball?
+- League average pace (99-101 possessions)
+- Fastest and slowest teams
+- How pace impacts totals
+- Pace changes mid-game
+
+#### Article 40: "Quarter-by-Quarter Trends"
+- First quarter totals tend lower
+- Third quarter scoring spikes
+- Fourth quarter variance
+- Overtime implications
+- Our adjustments per quarter
+
+#### Article 41: "Key Player Injuries and Impact"
+- Star players and pace changes
+- Injury news timing
+- Line moves on injury reports
+- Depth chart considerations
+- Our injury tracker (coming soon)
+
+#### Article 42: "Rest and Back-to-Backs"
+- NBA scheduling quirks
+- Fatigue impact on totals
+- Rest advantage quantified
+- Second night of B2B trends
+- Coaching rotation changes
+
+#### Article 43: "Home vs Away Splits"
+- Home court advantage in totals
+- Travel fatigue factors
+- Altitude adjustments (Denver)
+- Cross-country trips
+- Conference differences
+
+### Section 10: Legal & Responsible Gaming
+
+#### Article 44: "Legal Sports Betting: Know Your State"
+- Legal states for online betting
+- Age requirements (21+)
+- Offshore vs regulated books
+- Tax implications of winnings
+- Staying compliant
+
+#### Article 45: "Responsible Gaming Resources"
+- Recognizing problem gambling signs
+- Setting deposit limits
+- Self-exclusion programs
+- National helpline: 1-800-GAMBLER
+- This is entertainment, not income
+
+#### Article 46: "Understanding the Odds (Reality Check)"
+- Long-term expectation vs short-term luck
+- The house always has an edge
+- Professional bettors are rare
+- Realistic ROI expectations (3-5% is excellent)
+- Why most bettors lose
+
+#### Article 47: "Record Keeping for Taxes"
+- IRS requirements for gambling winnings
+- Tracking wins and losses
+- Professional gambler vs recreational
+- Tax software integration
+- Consulting a tax professional
+
+---
+
+## 🚀 Complete Feature Roadmap
+
+### ✅ Current Features (MVP)
+
+#### Live Game Monitoring
+- Real-time NBA game scores
+- Quarter and time remaining display
+- Home/away team display
+- Game status indicators (upcoming/live/final)
+
+#### Odds Integration
+- Live odds from The Odds API
+- Multiple sportsbook comparison (DraftKings, FanDuel, BetMGM, etc.)
+- American odds format (-110, +120)
+- Over/Under totals display
+- Pregame total vs current live total
+
+#### Projection System
+- Pace-based projection model
+- Current total score tracking
+- Projected final total calculation
+- Confidence levels (LOW/MEDIUM/HIGH)
+- Edge calculation (projected vs market)
+
+#### Edge Detection
+- 5+ point edge threshold
+- OVER/UNDER recommendations
+- Visual indicators for betting opportunities
+- Edge size display
+
+#### API Backend
+- FastAPI REST endpoints
+- `/api/games` - All live games
+- `/api/games/{id}` - Specific game
+- `/api/health` - System health check
+- Auto-refresh every 15 seconds
+- CORS enabled for local development
+
+### 🔨 In Development
+
+#### Enhanced Models
+- Momentum model (recent quarter scoring)
+- Regression model (mean reversion detection)
+- Situational model (back-to-back, rest, travel)
+- Blowout/garbage time detection
+- Model ensemble weighting
+
+#### Frontend Dashboard V2
+- React + TypeScript + Tailwind
+- Real-time WebSocket updates
+- Sortable game cards
+- Filter by edge size
+- Filter by confidence level
+- Game detail modal view
+
+#### Improved Stats Display
+- Quarter-by-quarter scoring breakdown
+- Team pace statistics
+- Field goal percentage tracking
+- Recent scoring trends (last 5 minutes)
+
+### 🎯 Roadmap Phase 1 (Next 2-4 Weeks)
+
+#### Unit Sizing Calculator
+- Kelly Criterion implementation
+- Fractional Kelly options (1/4, 1/2, 3/4)
+- Bankroll input
+- Unit recommendation per bet
+- Risk tolerance settings
+- Position sizing based on edge + confidence
+
+#### Opportunity Ranker
+- Score all active games
+- Rank by: edge * confidence
+- Top opportunities list
+- Quick-action betting queue
+- Dismissable notifications
+
+#### Historical Tracking
+- Store all projections and outcomes
+- Track model accuracy over time
+- Closing line value (CLV) calculation
+- Performance metrics per model
+- ROI tracking per edge size
+
+#### Enhanced Game Stats
+- Pace per quarter
+- Possession count estimates
+- Shooting efficiency trends
+- Timeout remaining
+- Foul situation impact
+
+#### Alert System
+- Browser notifications
+- Custom edge thresholds
+- Specific team alerts
+- Sound alerts toggle
+- Email/SMS integration (optional)
+
+#### Multiple Sportsbook Lines
+- Display best available odds
+- Line shopping recommendations
+- Arbitrage opportunity detection
+- Steam move indicators
+- Line movement history
+
+### 🎯 Roadmap Phase 2 (1-3 Months)
+
+#### Advanced Models
+
+**Player Impact Model**
+- Key player on/off court tracking
+- Lineup-based projections
+- Star player injury adjustments
+- Bench depth impact scoring
+- Minutes distribution tracking
+
+**Referee Model**
+- Historical referee data
+- Over/under tendencies per ref crew
+- Foul rate impact on pace
+- Specific ref assignments per game
+- Crew total averages
+
+**Team Tendency Model**
+- Team-specific pace by quarter
+- Home/away splits
+- Conference matchup trends
+- Rivalry game pace changes
+- Coaching style impact
+
+**Fatigue Model**
+- Back-to-back game adjustments
+- Minutes played tracking (season)
+- Travel distance calculator
+- Time zone changes
+- Rest days since last game
+
+**Weather/External Model**
+- Arena altitude (Denver)
+- Travel logistics
+- Playoff atmosphere adjustments
+- Rivalry intensity scoring
+- Schedule spot analysis
+
+#### Machine Learning Integration
+- XGBoost ensemble model
+- Feature importance display
+- Model retraining pipeline
+- A/B testing new models
+- Backtesting framework
+
+#### Live Game Streaming
+- Embedded game streams (legal APIs)
+- Picture-in-picture mode
+- Watch while monitoring odds
+- Multi-game split screen
+
+#### Advanced Charts
+- Pace trend line graph
+- Odds movement chart
+- Quarter scoring distribution
+- Win probability graph
+- Historical total comparisons
+
+#### Social Features
+- Share betting opportunities
+- Community picks leaderboard
+- Follow top performers
+- Discord integration
+- Betting slip screenshot tool
+
+### 🎯 Roadmap Phase 3 (3-6 Months)
+
+#### Player Props Integration
+
+**Points Props**
+- Player projected points
+- Points vs market lines
+- Minutes played correlation
+- Usage rate adjustments
+- Matchup-based projections
+
+**Rebounds Props**
+- Player projected rebounds
+- Pace impact on rebound totals
+- Opponent rebounding strength
+- Position battle analysis
+
+**Assists Props**
+- Projected assists by player
+- Team pace and assist correlation
+- Primary ball handler analysis
+- Blowout scenario adjustments
+
+**Combined Props**
+- Points + Rebounds + Assists
+- Multi-stat projections
+- Correlation opportunities
+- Parlay builder recommendations
+
+#### Team Totals
+- Individual team total projections
+- Offensive/defensive pace splits
+- Matchup-specific adjustments
+- Correlation with game total
+
+#### Quarter/Half Lines
+- First quarter total projections
+- First half total projections
+- Second half adjustments
+- Quarter-specific trends
+
+#### Live Spread Betting
+- Live spread projections
+- Win probability calculator
+- Comeback likelihood scoring
+- Momentum-based spread edges
+
+#### Alternate Lines
+- Alt total recommendations
+- Boosted odds evaluation
+- Risk-adjusted alt line value
+- Key number avoidance (220.5 vs 221.5)
+
+#### Parlay Builder
+- Correlated parlay detection
+- EV calculation for parlays
+- Optimal parlay construction
+- Risk management for multi-leg bets
+- Hedge calculator for live parlays
+
+### 🎯 Roadmap Phase 4 (6-12 Months)
+
+#### Mobile App
+- iOS native app
+- Android native app
+- Push notifications
+- Biometric login
+- Offline projection caching
+
+#### Bet Tracking Platform
+- Import bets from sportsbooks
+- Automatic result tracking
+- P&L dashboard
+- ROI by bet type
+- CLV tracking per bet
+- Bankroll graph over time
+- Win rate by edge size
+- Model performance breakdown
+
+#### AI Betting Assistant
+- Natural language queries ("Show me high-edge overs")
+- Personalized recommendations
+- Learning from your bet history
+- Risk profile customization
+- Voice commands
+
+#### Sportsbook API Integration
+- One-click bet placement
+- Account balance display
+- Bet history sync
+- Automated hedge placement
+- Multi-book bet splitting
+
+#### Community Platform
+- User-submitted models
+- Model marketplace
+- Leaderboard competitions
+- Educational content hub
+- Live chat during games
+
+#### Video Content
+- Model breakdown videos
+- Game recap analysis
+- Edge opportunity highlights
+- Weekly betting review
+- Educational series
+
+### 🎯 Advanced Features (Future Exploration)
+
+#### Portfolio Management
+- Multi-game portfolio construction
+- Variance reduction strategies
+- Correlation matrix across games
+- Kelly optimization across bets
+- Dynamic rebalancing
+
+#### Hedge Automation
+- Auto-hedge when profitable
+- Trailing hedge strategies
+- Guaranteed profit locks
+- Middle opportunity execution
+
+#### Simulator Mode
+- Paper trade with fake money
+- Test strategies risk-free
+- Historical game replay
+- Model backtesting interface
+
+#### API Access for Users
+- Developer API keys
+- Custom integrations
+- Webhook notifications
+- Raw data export
+
+#### White Label Platform
+- Custom branding for affiliates
+- Embed widgets on websites
+- API licensing
+- B2B partnerships
+
+#### Other Sports
+- NFL totals
+- MLB run lines
+- NHL totals
+- NCAAB totals
+- Soccer goals
+
+#### International Books
+- European sportsbook integration
+- Decimal odds display
+- Exchange betting (Betfair)
+- Asian handicap support
+
+---
+
+## 💰 Sportsbook Affiliate Integration
+
+### Top Affiliate Programs
+
+#### 1. DraftKings Sportsbook
+- **Commission**: CPA or Revenue Share
+- **Typical CPA**: $100-$200 per signup
+- **Cookie Duration**: 30 days
+- **Sign Up**: https://affiliates.draftkings.com/
+
+#### 2. FanDuel Sportsbook
+- **Commission**: CPA or Hybrid models
+- **Typical CPA**: $100-$250 per signup
+- **Cookie Duration**: 30 days
+- **Sign Up**: https://partners.fanduel.com/
+
+#### 3. BetMGM
+- **Commission**: CPA or Revenue Share (25-35%)
+- **Typical CPA**: $75-$150
+- **Cookie Duration**: 30-45 days
+- **Sign Up**: https://affiliates.betmgm.com/
+
+#### 4. Caesars Sportsbook
+- **Commission**: CPA ($50-$200) or Revenue Share
+- **Cookie Duration**: 30 days
+- **Sign Up**: https://www.williamhillaffiliates.com/
+
+#### 5. BetRivers
+- **Commission**: CPA or Revenue Share
+- **Typical CPA**: $75-$125
+- **Sign Up**: https://affiliates.rushstreetinteractive.com/
+
+### Implementation Strategy
+
+#### Where to Place Affiliate Links
+
+1. **Game Card CTAs**
+   - Next to each bookmaker's odds
+   - "Bet OVER -110 on DraftKings" buttons
+   - Highlight best available line
+
+2. **Comparison Tables**
+   - Multi-book odds comparison
+   - "Bet Now" links per sportsbook
+   - Best line indicator
+
+3. **Opportunity List**
+   - Top edges across all games
+   - Quick-bet action buttons
+   - Sportsbook recommendations
+
+4. **Header Navigation**
+   - Prominent "Sign Up" CTAs
+   - Welcome bonus highlights
+   - State-specific recommendations
+
+5. **Educational Content**
+   - Contextual sportsbook mentions
+   - Bonus calculator tools
+   - Promo calendar
+
+6. **Email Alerts**
+   - High-edge opportunity notifications
+   - Direct links to place bets
+   - Bonus reminders
+
+### Tracking Implementation
+
+```typescript
+// Sub-ID tracking for detailed analytics
+const trackingCodes = {
+  gameCard: 'gc',
+  opportunityList: 'opp',
+  comparisonTable: 'comp',
+  educationalArticle: 'edu',
+  headerCTA: 'nav',
+  emailAlert: 'email'
+};
+
+function buildAffiliateUrl(bookmaker: string, source: string, gameId?: string) {
+  const baseUrl = getAffiliateUrl(bookmaker);
+  const subId = `${source}_${gameId || 'home'}_${Date.now()}`;
+  return `${baseUrl}?sub_id=${subId}`;
+}
+```
+
+### Legal Requirements
+
+#### Required Disclaimers
+- Affiliate relationship disclosure
+- "21+ only" age verification
+- Responsible gambling resources (1-800-GAMBLER)
+- State-by-state legal status
+- "No guarantees" disclaimer
+
+#### Compliance Components
+- Age gate on first visit
+- Geo-location based book filtering
+- Legal states resource page
+- Terms of Service
+- Privacy Policy
+
+---
+
+## 💵 Revenue Model
+
+### Revenue Streams
+
+#### 1. Sportsbook Affiliates (Primary)
+- **CPA Model**: $50-$300 per signup
+- **Revenue Share**: 25-40% of net revenue (lifetime)
+- **Projected**: $5,000-$250,000+/month depending on scale
+
+#### 2. Premium Subscription (Future)
+- **Basic**: Free (limited features)
+- **Pro**: $29/month (all models, alerts, no ads)
+- **Elite**: $99/month (API access, custom models, priority support)
+
+#### 3. B2B Licensing (Future)
+- White label platform for affiliates
+- API access for developers
+- Data feeds for other platforms
+
+#### 4. Advertising (Minor)
+- Display ads for non-subscribers
+- Sponsored content
+- Newsletter sponsorships
+
+### Growth Projections
+
+#### Conservative (Year 1)
+- 1,000 monthly active users
+- 5% affiliate conversion = 50 signups/month
+- $100 avg CPA = **$5,000/month**
+- **Year 1 Total**: ~$60,000
+
+#### Moderate (Year 2)
+- 10,000 monthly active users
+- 7% conversion = 700 signups/month
+- $150 avg CPA + revenue share
+- **Monthly**: $150,000-$250,000
+- **Year 2 Total**: $1.8M - $3M
+
+#### Aggressive (Year 3+)
+- 100,000+ monthly active users
+- Revenue share primary model
+- 40% of net on high-volume bettors
+- **Monthly**: $500,000 - $1M+
+- **Year 3+ Total**: $6M - $12M+
+
+### Key Success Metrics
+
+1. **User Acquisition**
+   - Monthly active users
+   - Organic search traffic
+   - Social media followers
+   - Email list size
+
+2. **Engagement**
+   - Daily active users
+   - Average session duration
+   - Games monitored per user
+   - Feature usage rates
+
+3. **Monetization**
+   - Affiliate conversion rate
+   - Average CPA earned
+   - Revenue per user
+   - Lifetime value (LTV)
+
+4. **Product**
+   - Model accuracy
+   - Edge hit rate
+   - User satisfaction (NPS)
+   - Churn rate
+
+---
+
+## 🎯 Next Steps for Claude Code
+
+### Immediate Priorities
+
+1. **Complete Backend Core**
+   - Finish game_tracker.py
+   - Implement multiple betting models
+   - Add model router logic
+   - Build unit sizing calculator
+
+2. **Enhance Data Models**
+   - Add fields for advanced stats
+   - Create model output structures
+   - Build historical tracking schema
+
+3. **Build Frontend MVP**
+   - Create React components
+   - Implement WebSocket for real-time updates
+   - Build game cards with all data
+   - Add filtering and sorting
+
+4. **Integrate Affiliate Links**
+   - Add affiliate URL management
+   - Implement tracking codes
+   - Create CTA components
+   - Add legal disclaimers
+
+5. **Educational Content**
+   - Write first 10 articles
+   - Create glossary
+   - Build FAQ page
+   - Add tooltips throughout UI
+
+### Testing Checklist
+
+- [ ] Backend API endpoints work
+- [ ] Models produce accurate projections
+- [ ] Edge detection triggers correctly
+- [ ] Frontend displays all data properly
+- [ ] Affiliate links track properly
+- [ ] Legal disclaimers present
+- [ ] Mobile responsive
+- [ ] Performance optimized (< 2s load time)
+
+---
+
+## 📊 Competitive Analysis
+
+### Similar Tools
+
+1. **Unabated.com**
+   - Strengths: Excellent education, professional tools
+   - Gaps: Not focused on live betting, expensive
+   - Our Edge: Real-time live focus, free tier, better UX
+
+2. **OddsJam.com**
+   - Strengths: Great line shopping, arbitrage detection
+   - Gaps: Limited modeling, cluttered interface
+   - Our Edge: Better projections, cleaner UI, free education
+
+3. **Action Network**
+   - Strengths: Large community, good content
+   - Gaps: Basic tools, no advanced modeling
+   - Our Edge: Superior analytics, multiple models, real-time focus
+
+### Our Unique Value Props
+
+1. **Multiple Model Approach** - Not just one algorithm
+2. **Live Focus** - Optimized for in-game betting
+3. **Free Education** - Comprehensive learning resources
+4. **Clean UX** - Simple, intuitive, fast
+5. **Transparent** - Show confidence levels, explain models
+6. **Free Tier** - Accessible to beginners
+
+---
+
+## 🔑 Success Factors
+
+### Critical for Launch
+
+1. **Model Accuracy** - Must beat closing line consistently
+2. **Speed** - Data must refresh quickly (< 15 seconds)
+3. **UX** - Must be dead simple to use
+4. **Education** - Users need to understand the tool
+5. **Trust** - Transparent about limitations and risks
+
+### Growth Drivers
+
+1. **SEO** - Rank for "NBA live betting tools"
+2. **Content Marketing** - Educational articles
+3. **Social Proof** - Track record, testimonials
+4. **Affiliate Incentives** - Competitive CPAs
+5. **Product Excellence** - Best tool wins
+
+### Retention Factors
+
+1. **Consistent Edge** - Users win long-term
+2. **New Features** - Constant improvement
+3. **Community** - Social features, leaderboards
+4. **Support** - Responsive help
+5. **Value** - Worth the time investment
+
+---
+
+This guide should serve as the complete reference for building the NBA Live Betting Dashboard. Use it to stay aligned on vision, features, and priorities.
