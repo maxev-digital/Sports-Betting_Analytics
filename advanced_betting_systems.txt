@@ -1,0 +1,1472 @@
+# Advanced Betting Systems & Strategies - Implementation Guide
+
+## 📋 Table of Contents
+1. [System Architecture Overview](#system-architecture)
+2. [Statistical Database Layer](#statistical-database)
+3. [Strategy Engines](#strategy-engines)
+4. [Ensemble Model](#ensemble-model)
+5. [Expected Value Calculator](#ev-calculator)
+6. [Implementation Roadmap](#roadmap)
+7. [Database Schema](#database-schema)
+8. [API Endpoints](#api-endpoints)
+
+---
+
+## 🏗️ System Architecture Overview
+
+### Multi-Layer EV Detection Platform
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    DATA LAYER (Bottom)                      │
+├─────────────────────────────────────────────────────────────┤
+│  • Historical Stats DB (Team Rankings, Basketball Reference)│
+│  • Player Stats DB (Injuries, Usage Rates, Minutes)        │
+│  • Odds History DB (Closing lines, movements)              │
+│  • H2H Database (Covers, historical matchups)              │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                 LIVE DATA STREAMS (Middle)                  │
+├─────────────────────────────────────────────────────────────┤
+│  • The Odds API (live odds refresh every 15s)              │
+│  • Sportradar/ESPN (live game stats, play-by-play)         │
+│  • Line Movement Tracker (detect steam/RLM)                │
+│  • Injury News Aggregator (Twitter API, RotoWire)          │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│              STRATEGY ENGINES (Top)                         │
+├─────────────────────────────────────────────────────────────┤
+│  • Pace Model          • H2H Trends        • Regression     │
+│  • Momentum Model      • Line Movement     • Situational    │
+│  • Player Props        • Referee Model     • Fatigue        │
+│  • Garbage Time        • Lineup Impact     • ML Ensemble    │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│           EV CALCULATOR & OPPORTUNITY SCORER                │
+├─────────────────────────────────────────────────────────────┤
+│  • Combine all model outputs                                │
+│  • Calculate true probability vs market odds                │
+│  • Detect positive EV across all markets                    │
+│  • Rank opportunities by confidence × edge                  │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                USER ALERTS & DASHBOARD                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 Statistical Database Layer
+
+### File: `backend/models/stats_database.py`
+
+```python
+"""Central statistical database for all betting models"""
+
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+from datetime import datetime, timedelta
+import asyncpg
+from enum import Enum
+
+class StatCategory(str, Enum):
+    TEAM_OFFENSE = "team_offense"
+    TEAM_DEFENSE = "team_defense"
+    PLAYER_USAGE = "player_usage"
+    SITUATIONAL = "situational"
+    REFEREE = "referee"
+    H2H_HISTORY = "h2h_history"
+    LINE_HISTORY = "line_history"
+
+@dataclass
+class TeamStats:
+    """Comprehensive team statistics"""
+    team_name: str
+    sport: str
+    season: str
+    
+    # Offensive stats
+    points_per_game: float
+    pace: float  # Possessions per game
+    offensive_rating: float  # Points per 100 possessions
+    effective_fg_pct: float
+    three_point_rate: float
+    free_throw_rate: float
+    offensive_rebound_pct: float
+    turnover_pct: float
+    
+    # Defensive stats
+    points_allowed_per_game: float
+    defensive_rating: float
+    opponent_effective_fg_pct: float
+    defensive_rebound_pct: float
+    steal_pct: float
+    block_pct: float
+    
+    # Situational splits
+    home_ppg: float
+    away_ppg: float
+    vs_winning_teams_ppg: float
+    vs_losing_teams_ppg: float
+    back_to_back_ppg: float
+    rest_advantage_ppg: float
+    
+    # Over/Under trends
+    over_record: str  # "25-15-2"
+    over_percentage: float
+    avg_total: float
+    home_over_pct: float
+    away_over_pct: float
+    
+    # Recent form
+    last_5_ppg: float
+    last_10_ppg: float
+    last_5_pace: float
+    
+    # Advanced metrics
+    net_rating: float  # Point differential per 100 possessions
+    true_shooting_pct: float
+    assist_to_turnover_ratio: float
+
+@dataclass
+class PlayerStats:
+    """Key player statistics"""
+    player_name: str
+    team: str
+    position: str
+    
+    # Usage
+    minutes_per_game: float
+    usage_rate: float  # Percentage of team possessions used
+    on_court_net_rating: float
+    
+    # Scoring
+    points_per_game: float
+    field_goal_pct: float
+    three_point_pct: float
+    free_throw_pct: float
+    
+    # Playmaking
+    assists_per_game: float
+    turnovers_per_game: float
+    
+    # Rebounding
+    rebounds_per_game: float
+    offensive_rebounds: float
+    defensive_rebounds: float
+    
+    # Defense
+    steals_per_game: float
+    blocks_per_game: float
+    
+    # Props context
+    over_under_record_points: str
+    over_under_record_assists: str
+    over_under_record_rebounds: str
+    
+    # Injury status
+    injury_status: Optional[str] = None
+    games_missed: int = 0
+
+@dataclass
+class MatchupContext:
+    """Situational context for a specific matchup"""
+    home_team: str
+    away_team: str
+    sport: str
+    game_date: datetime
+    
+    # Schedule factors
+    home_rest_days: int
+    away_rest_days: int
+    home_back_to_back: bool
+    away_back_to_back: bool
+    home_travel_distance: float  # Miles traveled
+    away_travel_distance: float
+    
+    # Motivation factors
+    playoff_implications: bool
+    rivalry_game: bool
+    revenge_game: bool
+    season_series_record: str  # "1-1"
+    
+    # Injuries
+    home_key_injuries: List[str]
+    away_key_injuries: List[str]
+    home_injury_impact_score: float  # 0-10
+    away_injury_impact_score: float
+    
+    # Weather (for outdoor sports)
+    temperature: Optional[float] = None
+    wind_speed: Optional[float] = None
+    precipitation: Optional[str] = None
+    
+    # Referee (NBA/NFL)
+    referee_name: Optional[str] = None
+    referee_over_under_tendency: Optional[float] = None
+    referee_avg_fouls_called: Optional[float] = None
+
+class StatsDatabase:
+    """Central database manager for all statistical models"""
+    
+    def __init__(self, database_url: str):
+        self.db_url = database_url
+        self.pool = None
+    
+    async def connect(self):
+        """Initialize database connection pool"""
+        self.pool = await asyncpg.create_pool(self.db_url)
+    
+    async def get_team_stats(
+        self, 
+        team_name: str, 
+        sport: str,
+        season: str = "2024-25"
+    ) -> TeamStats:
+        """Fetch comprehensive team statistics"""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT * FROM team_stats 
+                WHERE team_name = $1 AND sport = $2 AND season = $3
+            """, team_name, sport, season)
+            
+            if not row:
+                # Fetch from external API (Team Rankings, Basketball Reference)
+                return await self._fetch_team_stats_external(team_name, sport, season)
+            
+            return TeamStats(**dict(row))
+    
+    async def get_player_stats(
+        self,
+        player_name: str,
+        team: str
+    ) -> PlayerStats:
+        """Fetch player statistics"""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT * FROM player_stats 
+                WHERE player_name = $1 AND team = $2
+            """, player_name, team)
+            
+            if not row:
+                return await self._fetch_player_stats_external(player_name, team)
+            
+            return PlayerStats(**dict(row))
+    
+    async def get_matchup_context(
+        self,
+        home_team: str,
+        away_team: str,
+        sport: str,
+        game_date: datetime
+    ) -> MatchupContext:
+        """Get all contextual factors for a matchup"""
+        # Calculate rest days
+        home_rest = await self._calculate_rest_days(home_team, game_date)
+        away_rest = await self._calculate_rest_days(away_team, game_date)
+        
+        # Get injuries
+        home_injuries = await self._get_team_injuries(home_team, game_date)
+        away_injuries = await self._get_team_injuries(away_team, game_date)
+        
+        # Get referee info (if available)
+        referee_info = await self._get_referee_assignment(home_team, away_team, game_date)
+        
+        return MatchupContext(
+            home_team=home_team,
+            away_team=away_team,
+            sport=sport,
+            game_date=game_date,
+            home_rest_days=home_rest['days'],
+            away_rest_days=away_rest['days'],
+            home_back_to_back=home_rest['back_to_back'],
+            away_back_to_back=away_rest['back_to_back'],
+            home_travel_distance=home_rest['travel_distance'],
+            away_travel_distance=away_rest['travel_distance'],
+            home_key_injuries=home_injuries['players'],
+            away_key_injuries=away_injuries['players'],
+            home_injury_impact_score=home_injuries['impact_score'],
+            away_injury_impact_score=away_injuries['impact_score'],
+            referee_name=referee_info.get('name'),
+            referee_over_under_tendency=referee_info.get('over_under_pct'),
+            playoff_implications=await self._check_playoff_implications(home_team, away_team),
+            rivalry_game=await self._check_rivalry(home_team, away_team),
+            revenge_game=await self._check_revenge(home_team, away_team),
+            season_series_record=await self._get_season_series(home_team, away_team)
+        )
+    
+    async def get_h2h_history(
+        self,
+        team1: str,
+        team2: str,
+        sport: str,
+        limit: int = 20
+    ) -> List[Dict]:
+        """Get head-to-head game history"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT * FROM h2h_history 
+                WHERE (home_team = $1 AND away_team = $2)
+                   OR (home_team = $2 AND away_team = $1)
+                AND sport = $3
+                ORDER BY game_date DESC
+                LIMIT $4
+            """, team1, team2, sport, limit)
+            
+            return [dict(row) for row in rows]
+    
+    async def get_closing_line_value(
+        self,
+        team: str,
+        sport: str,
+        days: int = 30
+    ) -> Dict:
+        """Calculate team's closing line value (CLV)"""
+        cutoff_date = datetime.now() - timedelta(days=days)
+        
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT 
+                    game_date,
+                    opening_total,
+                    closing_total,
+                    final_total,
+                    our_prediction
+                FROM game_history
+                WHERE (home_team = $1 OR away_team = $1)
+                AND sport = $2
+                AND game_date > $3
+            """, team, sport, cutoff_date)
+            
+            games = [dict(row) for row in rows]
+            
+            # Calculate CLV
+            clv_results = []
+            for game in games:
+                if game['our_prediction'] == 'OVER':
+                    clv = game['closing_total'] - game['opening_total']
+                else:
+                    clv = game['opening_total'] - game['closing_total']
+                
+                clv_results.append({
+                    'date': game['game_date'],
+                    'clv': clv,
+                    'beat_closing': (
+                        (game['our_prediction'] == 'OVER' and game['final_total'] > game['closing_total']) or
+                        (game['our_prediction'] == 'UNDER' and game['final_total'] < game['closing_total'])
+                    )
+                })
+            
+            avg_clv = sum(r['clv'] for r in clv_results) / len(clv_results) if clv_results else 0
+            win_rate = sum(1 for r in clv_results if r['beat_closing']) / len(clv_results) if clv_results else 0
+            
+            return {
+                'team': team,
+                'days': days,
+                'games_analyzed': len(clv_results),
+                'avg_clv': round(avg_clv, 2),
+                'closing_line_win_rate': round(win_rate * 100, 1)
+            }
+    
+    # Helper methods to implement:
+    async def _fetch_team_stats_external(self, team_name, sport, season):
+        """Fetch from Team Rankings, Basketball Reference, etc."""
+        # TODO: Implement scraping logic
+        pass
+    
+    async def _fetch_player_stats_external(self, player_name, team):
+        """Fetch from ESPN, Basketball Reference, etc."""
+        # TODO: Implement scraping logic
+        pass
+    
+    async def _calculate_rest_days(self, team, game_date):
+        """Calculate rest days from last game"""
+        # TODO: Query game_history table
+        pass
+    
+    async def _get_team_injuries(self, team, game_date):
+        """Get current injury report"""
+        # TODO: Scrape from ESPN, RotoWire
+        pass
+    
+    async def _get_referee_assignment(self, home_team, away_team, game_date):
+        """Get referee assignment if available"""
+        # TODO: Scrape from official league sources
+        pass
+    
+    async def _check_playoff_implications(self, home_team, away_team):
+        """Check if game has playoff implications"""
+        # TODO: Check standings and scenarios
+        pass
+    
+    async def _check_rivalry(self, home_team, away_team):
+        """Check if this is a known rivalry"""
+        rivalries = {
+            ('Lakers', 'Celtics'): True,
+            ('Yankees', 'Red Sox'): True,
+            # Add more rivalries
+        }
+        return rivalries.get((home_team, away_team), False)
+    
+    async def _check_revenge(self, home_team, away_team):
+        """Check if this is a revenge game (lost badly recently)"""
+        # TODO: Check recent matchup results
+        pass
+    
+    async def _get_season_series(self, home_team, away_team):
+        """Get current season series record"""
+        # TODO: Query current season H2H
+        pass
+```
+
+---
+
+## 🎯 Strategy Engines
+
+### File: `backend/strategies/strategy_engine.py`
+
+```python
+"""Collection of advanced betting strategies"""
+
+from typing import Dict, List, Optional
+from dataclasses import dataclass
+from enum import Enum
+
+class StrategyType(str, Enum):
+    PACE_BASED = "pace_based"
+    MOMENTUM = "momentum"
+    REGRESSION = "regression"
+    H2H_TRENDS = "h2h_trends"
+    LINE_MOVEMENT = "line_movement"
+    SITUATIONAL = "situational"
+    REFEREE = "referee"
+    FATIGUE = "fatigue"
+    GARBAGE_TIME = "garbage_time"
+    LINEUP_IMPACT = "lineup_impact"
+    PLAYER_PROPS = "player_props"
+
+@dataclass
+class StrategySignal:
+    """Output from a betting strategy"""
+    strategy_type: StrategyType
+    recommendation: str  # "OVER", "UNDER", "HOME", "AWAY", etc.
+    confidence: float  # 0.0 to 1.0
+    edge: float  # Projected edge in points/units
+    reasoning: str
+    supporting_data: Dict
+    weight: float = 1.0  # Weight in ensemble model
+
+class StrategyEngine:
+    """Base class for all betting strategies"""
+    
+    def __init__(self, stats_db):
+        self.stats_db = stats_db
+        self.strategy_type = None
+    
+    async def analyze(
+        self,
+        game,
+        odds: List,
+        context
+    ) -> Optional[StrategySignal]:
+        """Analyze game and return signal if opportunity exists"""
+        raise NotImplementedError
+
+class PaceBasedStrategy(StrategyEngine):
+    """Pace-based total projections"""
+    
+    strategy_type = StrategyType.PACE_BASED
+    
+    async def analyze(self, game, odds, context):
+        # Get team pace stats
+        home_stats = await self.stats_db.get_team_stats(
+            game.home_team.name, game.sport
+        )
+        away_stats = await self.stats_db.get_team_stats(
+            game.away_team.name, game.sport
+        )
+        
+        # Calculate expected pace for matchup
+        expected_pace = (home_stats.pace + away_stats.pace) / 2
+        
+        # Adjust for injuries, rest, etc.
+        if context.home_injury_impact_score > 7:
+            expected_pace *= 0.95  # Injuries slow pace
+        if context.away_injury_impact_score > 7:
+            expected_pace *= 0.95
+        
+        # Project total
+        home_pts_per_100 = home_stats.offensive_rating
+        away_pts_per_100 = away_stats.offensive_rating
+        
+        projected_total = (
+            (home_pts_per_100 + away_pts_per_100) * expected_pace / 100
+        )
+        
+        # Compare to market
+        market_total = odds[0].total_line if odds else 220.0
+        edge = abs(projected_total - market_total)
+        
+        if edge >= 3.0:  # 3+ point edge
+            return StrategySignal(
+                strategy_type=self.strategy_type,
+                recommendation="OVER" if projected_total > market_total else "UNDER",
+                confidence=min(edge / 10, 1.0),
+                edge=edge,
+                reasoning=f"Pace-based model projects {projected_total:.1f}, market at {market_total}",
+                supporting_data={
+                    'expected_pace': expected_pace,
+                    'home_off_rating': home_pts_per_100,
+                    'away_off_rating': away_pts_per_100,
+                    'projected_total': projected_total,
+                    'market_total': market_total
+                },
+                weight=1.0
+            )
+        
+        return None
+
+class RegressionStrategy(StrategyEngine):
+    """Regression to the mean strategy"""
+    
+    strategy_type = StrategyType.REGRESSION
+    
+    async def analyze(self, game, odds, context):
+        home_stats = await self.stats_db.get_team_stats(
+            game.home_team.name, game.sport
+        )
+        away_stats = await self.stats_db.get_team_stats(
+            game.away_team.name, game.sport
+        )
+        
+        # Check if teams are running hot/cold
+        home_last5_vs_season = home_stats.last_5_ppg - home_stats.points_per_game
+        away_last5_vs_season = away_stats.last_5_ppg - away_stats.points_per_game
+        
+        # If both teams hot (scoring 5+ more than average), expect regression
+        if home_last5_vs_season > 5 and away_last5_vs_season > 5:
+            market_total = odds[0].total_line if odds else 220.0
+            expected_regression = 6.0  # Expect 6 point drop
+            
+            return StrategySignal(
+                strategy_type=self.strategy_type,
+                recommendation="UNDER",
+                confidence=0.65,
+                edge=expected_regression,
+                reasoning=f"Both teams hot (Home +{home_last5_vs_season:.1f}, Away +{away_last5_vs_season:.1f}), expect regression",
+                supporting_data={
+                    'home_deviation': home_last5_vs_season,
+                    'away_deviation': away_last5_vs_season,
+                    'expected_regression': expected_regression
+                },
+                weight=0.8
+            )
+        
+        # If both teams cold, expect bounce-back
+        if home_last5_vs_season < -5 and away_last5_vs_season < -5:
+            return StrategySignal(
+                strategy_type=self.strategy_type,
+                recommendation="OVER",
+                confidence=0.60,
+                edge=5.0,
+                reasoning=f"Both teams cold, expect regression to mean",
+                supporting_data={
+                    'home_deviation': home_last5_vs_season,
+                    'away_deviation': away_last5_vs_season
+                },
+                weight=0.7
+            )
+        
+        return None
+
+class FatigueStrategy(StrategyEngine):
+    """Back-to-back and rest-based strategy"""
+    
+    strategy_type = StrategyType.FATIGUE
+    
+    async def analyze(self, game, odds, context):
+        # Back-to-back games tend to go UNDER
+        if context.home_back_to_back or context.away_back_to_back:
+            fatigue_factor = 0
+            reasoning_parts = []
+            
+            if context.home_back_to_back:
+                fatigue_factor += 2.5
+                reasoning_parts.append(f"{game.home_team.name} on back-to-back")
+            
+            if context.away_back_to_back:
+                fatigue_factor += 2.5
+                reasoning_parts.append(f"{game.away_team.name} on back-to-back")
+            
+            # Add travel fatigue
+            if context.away_travel_distance > 1500:  # Cross-country
+                fatigue_factor += 1.5
+                reasoning_parts.append(f"Away team traveled {context.away_travel_distance:.0f} miles")
+            
+            if fatigue_factor >= 3.0:
+                return StrategySignal(
+                    strategy_type=self.strategy_type,
+                    recommendation="UNDER",
+                    confidence=0.70,
+                    edge=fatigue_factor,
+                    reasoning=" + ".join(reasoning_parts),
+                    supporting_data={
+                        'home_rest': context.home_rest_days,
+                        'away_rest': context.away_rest_days,
+                        'home_b2b': context.home_back_to_back,
+                        'away_b2b': context.away_back_to_back,
+                        'travel_distance': context.away_travel_distance
+                    },
+                    weight=0.9
+                )
+        
+        # Rest advantage (3+ days vs 0-1 days)
+        rest_diff = abs(context.home_rest_days - context.away_rest_days)
+        if rest_diff >= 2:
+            rested_team = "home" if context.home_rest_days > context.away_rest_days else "away"
+            
+            return StrategySignal(
+                strategy_type=self.strategy_type,
+                recommendation=f"{rested_team.upper()}_SPREAD",
+                confidence=0.65,
+                edge=rest_diff * 1.5,
+                reasoning=f"{rested_team.title()} team has {rest_diff} day rest advantage",
+                supporting_data={
+                    'rest_differential': rest_diff,
+                    'advantage_team': rested_team
+                },
+                weight=0.8
+            )
+        
+        return None
+
+class RefereeStrategy(StrategyEngine):
+    """Referee tendency-based strategy"""
+    
+    strategy_type = StrategyType.REFEREE
+    
+    async def analyze(self, game, odds, context):
+        if not context.referee_name:
+            return None
+        
+        ref_tendency = context.referee_over_under_tendency
+        if ref_tendency is None:
+            return None
+        
+        # If referee has strong over/under tendency (>55% or <45%)
+        if ref_tendency > 55:
+            return StrategySignal(
+                strategy_type=self.strategy_type,
+                recommendation="OVER",
+                confidence=0.60,
+                edge=2.0,
+                reasoning=f"Ref {context.referee_name} games go OVER {ref_tendency}% of time",
+                supporting_data={
+                    'referee': context.referee_name,
+                    'over_percentage': ref_tendency,
+                    'avg_fouls': context.referee_avg_fouls_called
+                },
+                weight=0.6
+            )
+        
+        elif ref_tendency < 45:
+            return StrategySignal(
+                strategy_type=self.strategy_type,
+                recommendation="UNDER",
+                confidence=0.60,
+                edge=2.0,
+                reasoning=f"Ref {context.referee_name} games go UNDER {100-ref_tendency}% of time",
+                supporting_data={
+                    'referee': context.referee_name,
+                    'over_percentage': ref_tendency,
+                    'avg_fouls': context.referee_avg_fouls_called
+                },
+                weight=0.6
+            )
+        
+        return None
+
+class GarbageTimeStrategy(StrategyEngine):
+    """Detect and adjust for garbage time scenarios"""
+    
+    strategy_type = StrategyType.GARBAGE_TIME
+    
+    async def analyze(self, game, odds, context):
+        # Only applies to live games
+        if game.status != "live":
+            return None
+        
+        # Check if game is a blowout
+        if not (game.home_team.score and game.away_team.score):
+            return None
+        
+        score_diff = abs(game.home_team.score - game.away_team.score)
+        
+        # NBA: 15+ point lead in Q4 = garbage time likely
+        if game.sport == "basketball_nba":
+            if game.period >= 4 and score_diff >= 15:
+                return StrategySignal(
+                    strategy_type=self.strategy_type,
+                    recommendation="OVER",
+                    confidence=0.75,
+                    edge=3.0,
+                    reasoning=f"Garbage time expected ({score_diff} point lead in Q4)",
+                    supporting_data={
+                        'score_differential': score_diff,
+                        'period': game.period,
+                        'time_remaining': game.time_remaining
+                    },
+                    weight=1.0
+                )
+        
+        # NFL: 3+ TD lead in 4th quarter
+        elif game.sport == "americanfootball_nfl":
+            if game.period >= 4 and score_diff >= 21:
+                return StrategySignal(
+                    strategy_type=self.strategy_type,
+                    recommendation="OVER",
+                    confidence=0.70,
+                    edge=4.0,
+                    reasoning=f"Prevent defense + hurry-up offense likely",
+                    supporting_data={
+                        'score_differential': score_diff,
+                        'period': game.period
+                    },
+                    weight=0.9
+                )
+        
+        return None
+
+class MomentumStrategy(StrategyEngine):
+    """Recent scoring momentum strategy"""
+    
+    strategy_type = StrategyType.MOMENTUM
+    
+    async def analyze(self, game, odds, context):
+        # Only for live games
+        if game.status != "live":
+            return None
+        
+        home_stats = await self.stats_db.get_team_stats(
+            game.home_team.name, game.sport
+        )
+        away_stats = await self.stats_db.get_team_stats(
+            game.away_team.name, game.sport
+        )
+        
+        # Calculate current pace vs season average
+        if game.period >= 2:  # Need at least some game data
+            current_total = game.home_team.score + game.away_team.score
+            expected_total = home_stats.avg_total
+            
+            # If scoring significantly faster than average
+            pace_factor = current_total / expected_total
+            
+            if pace_factor > 1.15:  # 15% faster pace
+                return StrategySignal(
+                    strategy_type=self.strategy_type,
+                    recommendation="OVER",
+                    confidence=0.70,
+                    edge=3.5,
+                    reasoning=f"Current pace {pace_factor:.1%} of expected, momentum suggests OVER",
+                    supporting_data={
+                        'current_total': current_total,
+                        'expected_total': expected_total,
+                        'pace_factor': pace_factor
+                    },
+                    weight=0.85
+                )
+            
+            elif pace_factor < 0.85:  # 15% slower pace
+                return StrategySignal(
+                    strategy_type=self.strategy_type,
+                    recommendation="UNDER",
+                    confidence=0.70,
+                    edge=3.5,
+                    reasoning=f"Current pace {pace_factor:.1%} of expected, momentum suggests UNDER",
+                    supporting_data={
+                        'current_total': current_total,
+                        'expected_total': expected_total,
+                        'pace_factor': pace_factor
+                    },
+                    weight=0.85
+                )
+        
+        return None
+```
+
+---
+
+## 🤖 Ensemble Model
+
+### File: `backend/strategies/ensemble_model.py`
+
+```python
+"""Combine multiple strategies into unified predictions"""
+
+from typing import List, Dict
+import numpy as np
+
+class EnsembleModel:
+    """Combine multiple betting strategies with weighted voting"""
+    
+    def __init__(self, stats_db):
+        self.stats_db = stats_db
+        
+        # Initialize all strategies
+        self.strategies = [
+            PaceBasedStrategy(stats_db),
+            RegressionStrategy(stats_db),
+            FatigueStrategy(stats_db),
+            RefereeStrategy(stats_db),
+            GarbageTimeStrategy(stats_db),
+            MomentumStrategy(stats_db),
+        ]
+    
+    async def analyze_game(
+        self,
+        game,
+        odds: List,
+        context
+    ) -> Dict:
+        """Run all strategies and combine results"""
+        
+        signals = []
+        
+        # Run each strategy
+        for strategy in self.strategies:
+            try:
+                signal = await strategy.analyze(game, odds, context)
+                if signal:
+                    signals.append(signal)
+            except Exception as e:
+                print(f"Strategy {strategy.strategy_type} failed: {e}")
+                continue
+        
+        if not signals:
+            return {
+                'recommendation': None, 
+                'confidence': 0, 
+                'edge': 0,
+                'expected_value': 0,
+                'is_positive_ev': False
+            }
+        
+        # Combine signals using weighted voting
+        combined = self._combine_signals(signals, odds)
+        
+        return combined
+    
+    def _combine_signals(
+        self, 
+        signals: List,
+        odds: List
+    ) -> Dict:
+        """Combine multiple signals into unified recommendation"""
+        
+        # Group signals by recommendation type
+        over_signals = [s for s in signals if s.recommendation == "OVER"]
+        under_signals = [s for s in signals if s.recommendation == "UNDER"]
+        
+        # Calculate weighted scores
+        over_score = sum(s.confidence * s.weight for s in over_signals)
+        under_score = sum(s.confidence * s.weight for s in under_signals)
+        
+        # Determine recommendation
+        if over_score > under_score and over_score >= 1.0:
+            recommendation = "OVER"
+            confidence = min(over_score / (over_score + under_score), 1.0)
+            supporting_strategies = [s.strategy_type.value for s in over_signals]
+            avg_edge = np.mean([s.edge for s in over_signals])
+        
+        elif under_score > over_score and under_score >= 1.0:
+            recommendation = "UNDER"
+            confidence = min(under_score / (over_score + under_score), 1.0)
+            supporting_strategies = [s.strategy_type.value for s in under_signals]
+            avg_edge = np.mean([s.edge for s in under_signals])
+        
+        else:
+            return {
+                'recommendation': None, 
+                'confidence': 0, 
+                'edge': 0,
+                'expected_value': 0,
+                'is_positive_ev': False
+            }
+        
+        # Calculate expected value (EV)
+        market_total = odds[0].total_line if odds else 220.0
+        market_odds = odds[0].over_price if recommendation == "OVER" else odds[0].under_price
+        
+        # Convert American odds to implied probability
+        if market_odds < 0:
+            implied_prob = abs(market_odds) / (abs(market_odds) + 100)
+        else:
+            implied_prob = 100 / (market_odds + 100)
+        
+        # Our true probability (confidence adjusted)
+        true_prob = confidence
+        
+        # Calculate EV
+        ev = (true_prob * 100) - (implied_prob * 100)
+        
+        return {
+            'recommendation': recommendation,
+            'confidence': round(confidence * 100, 1),  # Convert to percentage
+            'edge': round(avg_edge, 1),
+            'expected_value': round(ev, 2),
+            'strategies_agreeing': len(supporting_strategies),
+            'strategy_breakdown': supporting_strategies,
+            'signals': [
+                {
+                    'type': s.strategy_type.value,
+                    'rec': s.recommendation,
+                    'confidence': round(s.confidence * 100, 1),
+                    'reasoning': s.reasoning
+                }
+                for s in signals
+            ],
+            'market_total': market_total,
+            'market_odds': market_odds,
+            'implied_probability': round(implied_prob * 100, 1),
+            'true_probability': round(true_prob * 100, 1),
+            'is_positive_ev': ev > 0
+        }
+```
+
+---
+
+## 💰 Expected Value Calculator
+
+### File: `backend/utils/ev_calculator.py`
+
+```python
+"""Expected Value calculations for betting opportunities"""
+
+from typing import Dict, Optional
+
+class EVCalculator:
+    """Calculate expected value for betting opportunities"""
+    
+    @staticmethod
+    def american_to_decimal(odds: int) -> float:
+        """Convert American odds to decimal"""
+        if odds > 0:
+            return (odds / 100) + 1
+        else:
+            return (100 / abs(odds)) + 1
+    
+    @staticmethod
+    def american_to_implied_prob(odds: int) -> float:
+        """Convert American odds to implied probability"""
+        if odds < 0:
+            return abs(odds) / (abs(odds) + 100)
+        else:
+            return 100 / (odds + 100)
+    
+    @staticmethod
+    def calculate_ev(
+        true_probability: float,
+        market_odds: int,
+        bet_amount: float = 100
+    ) -> Dict:
+        """
+        Calculate expected value of a bet
+        
+        Args:
+            true_probability: Our model's probability (0.0 to 1.0)
+            market_odds: American odds (-110, +150, etc.)
+            bet_amount: Size of bet in dollars
+        
+        Returns:
+            Dict with EV calculations
+        """
+        # Convert odds to implied probability
+        implied_prob = EVCalculator.american_to_implied_prob(market_odds)
+        
+        # Calculate payout
+        decimal_odds = EVCalculator.american_to_decimal(market_odds)
+        potential_profit = bet_amount * (decimal_odds - 1)
+        
+        # Calculate EV
+        win_amount = potential_profit
+        lose_amount = bet_amount
+        
+        ev_dollars = (true_probability * win_amount) - ((1 - true_probability) * lose_amount)
+        ev_percentage = (ev_dollars / bet_amount) * 100
+        
+        # Edge
+        edge = true_probability - implied_prob
+        edge_percentage = edge * 100
+        
+        return {
+            'expected_value_dollars': round(ev_dollars, 2),
+            'expected_value_percentage': round(ev_percentage, 2),
+            'edge': round(edge, 4),
+            'edge_percentage': round(edge_percentage, 2),
+            'true_probability': round(true_probability * 100, 1),
+            'implied_probability': round(implied_prob * 100, 1),
+            'is_positive_ev': ev_dollars > 0,
+            'potential_profit': round(potential_profit, 2),
+            'risk_amount': bet_amount
+        }
+    
+    @staticmethod
+    def kelly_criterion(
+        edge: float,
+        odds: int,
+        bankroll: float,
+        kelly_fraction: float = 0.25
+    ) -> Dict:
+        """
+        Calculate optimal bet size using Kelly Criterion
+        
+        Args:
+            edge: Our edge (true_prob - implied_prob)
+            odds: American odds
+            bankroll: Total bankroll
+            kelly_fraction: Fraction of Kelly to use (0.25 = quarter Kelly)
+        
+        Returns:
+            Dict with bet sizing recommendations
+        """
+        # Convert to decimal odds
+        decimal_odds = EVCalculator.american_to_decimal(odds)
+        
+        # Kelly formula: (edge * decimal_odds) / (decimal_odds - 1)
+        if edge <= 0:
+            return {
+                'kelly_bet_size': 0,
+                'recommendation': 'NO BET',
+                'reason': 'No edge detected'
+            }
+        
+        full_kelly = (edge * decimal_odds) / (decimal_odds - 1)
+        
+        # Apply fraction
+        fractional_kelly = full_kelly * kelly_fraction
+        
+        # Calculate bet size
+        bet_size = bankroll * fractional_kelly
+        
+        # Cap at reasonable maximums
+        max_bet = bankroll * 0.05  # Never bet more than 5% of bankroll
+        bet_size = min(bet_size, max_bet)
+        
+        return {
+            'full_kelly_percentage': round(full_kelly * 100, 2),
+            'fractional_kelly_percentage': round(fractional_kelly * 100, 2),
+            'recommended_bet_size': round(bet_size, 2),
+            'recommended_units': round(bet_size / 100, 2),  # Assuming $100 = 1 unit
+            'kelly_fraction_used': kelly_fraction,
+            'bankroll': bankroll,
+            'max_bet_allowed': max_bet
+        }
+```
+
+---
+
+## 📊 Database Schema
+
+### SQL Schema for PostgreSQL
+
+```sql
+-- Team Statistics Table
+CREATE TABLE team_stats (
+    id SERIAL PRIMARY KEY,
+    team_name VARCHAR(100) NOT NULL,
+    sport VARCHAR(50) NOT NULL,
+    season VARCHAR(20) NOT NULL,
+    
+    -- Offensive stats
+    points_per_game DECIMAL(5,2),
+    pace DECIMAL(5,2),
+    offensive_rating DECIMAL(5,2),
+    effective_fg_pct DECIMAL(4,3),
+    three_point_rate DECIMAL(4,3),
+    free_throw_rate DECIMAL(4,3),
+    offensive_rebound_pct DECIMAL(4,3),
+    turnover_pct DECIMAL(4,3),
+    
+    -- Defensive stats
+    points_allowed_per_game DECIMAL(5,2),
+    defensive_rating DECIMAL(5,2),
+    opponent_effective_fg_pct DECIMAL(4,3),
+    defensive_rebound_pct DECIMAL(4,3),
+    steal_pct DECIMAL(4,3),
+    block_pct DECIMAL(4,3),
+    
+    -- Situational splits
+    home_ppg DECIMAL(5,2),
+    away_ppg DECIMAL(5,2),
+    vs_winning_teams_ppg DECIMAL(5,2),
+    vs_losing_teams_ppg DECIMAL(5,2),
+    back_to_back_ppg DECIMAL(5,2),
+    rest_advantage_ppg DECIMAL(5,2),
+    
+    -- Over/Under trends
+    over_record VARCHAR(20),
+    over_percentage DECIMAL(5,2),
+    avg_total DECIMAL(5,2),
+    home_over_pct DECIMAL(5,2),
+    away_over_pct DECIMAL(5,2),
+    
+    -- Recent form
+    last_5_ppg DECIMAL(5,2),
+    last_10_ppg DECIMAL(5,2),
+    last_5_pace DECIMAL(5,2),
+    
+    -- Advanced metrics
+    net_rating DECIMAL(5,2),
+    true_shooting_pct DECIMAL(4,3),
+    assist_to_turnover_ratio DECIMAL(4,2),
+    
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(team_name, sport, season)
+);
+
+-- Player Statistics Table
+CREATE TABLE player_stats (
+    id SERIAL PRIMARY KEY,
+    player_name VARCHAR(100) NOT NULL,
+    team VARCHAR(100) NOT NULL,
+    position VARCHAR(20),
+    
+    -- Usage
+    minutes_per_game DECIMAL(4,1),
+    usage_rate DECIMAL(4,3),
+    on_court_net_rating DECIMAL(5,2),
+    
+    -- Scoring
+    points_per_game DECIMAL(4,1),
+    field_goal_pct DECIMAL(4,3),
+    three_point_pct DECIMAL(4,3),
+    free_throw_pct DECIMAL(4,3),
+    
+    -- Playmaking
+    assists_per_game DECIMAL(4,1),
+    turnovers_per_game DECIMAL(3,1),
+    
+    -- Rebounding
+    rebounds_per_game DECIMAL(4,1),
+    offensive_rebounds DECIMAL(3,1),
+    defensive_rebounds DECIMAL(3,1),
+    
+    -- Defense
+    steals_per_game DECIMAL(3,1),
+    blocks_per_game DECIMAL(3,1),
+    
+    -- Props
+    over_under_record_points VARCHAR(20),
+    over_under_record_assists VARCHAR(20),
+    over_under_record_rebounds VARCHAR(20),
+    
+    -- Status
+    injury_status VARCHAR(50),
+    games_missed INTEGER DEFAULT 0,
+    
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(player_name, team)
+);
+
+-- Head-to-Head History
+CREATE TABLE h2h_history (
+    id SERIAL PRIMARY KEY,
+    home_team VARCHAR(100) NOT NULL,
+    away_team VARCHAR(100) NOT NULL,
+    sport VARCHAR(50) NOT NULL,
+    game_date DATE NOT NULL,
+    
+    home_score INTEGER,
+    away_score INTEGER,
+    final_total INTEGER,
+    
+    total_line DECIMAL(5,2),
+    result VARCHAR(10),  -- 'OVER' or 'UNDER'
+    
+    location VARCHAR(50),  -- 'home' or 'away' or 'neutral'
+    
+    UNIQUE(home_team, away_team, sport, game_date)
+);
+
+-- Game History (for CLV tracking)
+CREATE TABLE game_history (
+    id SERIAL PRIMARY KEY,
+    game_id VARCHAR(100) UNIQUE NOT NULL,
+    home_team VARCHAR(100) NOT NULL,
+    away_team VARCHAR(100) NOT NULL,
+    sport VARCHAR(50) NOT NULL,
+    game_date TIMESTAMP NOT NULL,
+    
+    -- Odds data
+    opening_total DECIMAL(5,2),
+    closing_total DECIMAL(5,2),
+    opening_spread DECIMAL(4,1),
+    closing_spread DECIMAL(4,1),
+    
+    -- Results
+    home_score INTEGER,
+    away_score INTEGER,
+    final_total INTEGER,
+    
+    -- Our predictions
+    our_prediction VARCHAR(20),
+    our_confidence DECIMAL(5,2),
+    our_projected_total DECIMAL(5,2),
+    
+    -- Analysis
+    beat_closing_line BOOLEAN,
+    clv DECIMAL(5,2),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Referee Data
+CREATE TABLE referee_stats (
+    id SERIAL PRIMARY KEY,
+    referee_name VARCHAR(100) UNIQUE NOT NULL,
+    sport VARCHAR(50) NOT NULL,
+    
+    games_worked INTEGER DEFAULT 0,
+    over_count INTEGER DEFAULT 0,
+    under_count INTEGER DEFAULT 0,
+    over_percentage DECIMAL(5,2),
+    
+    avg_fouls_called DECIMAL(4,1),
+    avg_total DECIMAL(5,2),
+    
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_team_stats_lookup ON team_stats(team_name, sport, season);
+CREATE INDEX idx_player_stats_lookup ON player_stats(player_name, team);
+CREATE INDEX idx_h2h_lookup ON h2h_history(home_team, away_team, sport);
+CREATE INDEX idx_game_history_date ON game_history(game_date);
+```
+
+---
+
+## 🚀 Implementation Roadmap
+
+### Phase 1: Database Setup (Week 1)
+- [ ] Set up PostgreSQL database
+- [ ] Create all tables with schema above
+- [ ] Build data scrapers for Team Rankings
+- [ ] Build data scrapers for Basketball Reference
+- [ ] Populate initial team stats (current season)
+- [ ] Set up automated daily updates
+
+### Phase 2: Core Statistics Engine (Week 2)
+- [ ] Implement `StatsDatabase` class
+- [ ] Add all helper methods (rest days, injuries, etc.)
+- [ ] Create Team Rankings API wrapper
+- [ ] Test with live NBA games
+- [ ] Add caching layer (Redis)
+
+### Phase 3: Strategy Engines (Week 3)
+- [ ] Implement Pace-Based Strategy
+- [ ] Implement Regression Strategy
+- [ ] Implement Fatigue Strategy
+- [ ] Implement Referee Strategy
+- [ ] Implement Garbage Time Strategy
+- [ ] Implement Momentum Strategy
+- [ ] Test each strategy individually
+
+### Phase 4: Ensemble Model (Week 4)
+- [ ] Build ensemble voting system
+- [ ] Implement weighted signal combination
+- [ ] Add EV calculator integration
+- [ ] Test with historical data
+- [ ] Track model performance
+
+### Phase 5: Advanced Features (Week 5-6)
+- [ ] Player props engine
+- [ ] Line movement tracker
+- [ ] Injury news aggregator
+- [ ] Kelly Criterion position sizer
+- [ ] Historical performance tracker
+
+### Phase 6: Frontend Integration (Week 7-8)
+- [ ] Display ensemble recommendations
+- [ ] Show strategy breakdown
+- [ ] EV calculator UI
+- [ ] Bet sizing calculator
+- [ ] Performance dashboard
+
+---
+
+## 🔌 API Endpoints
+
+### New Endpoints to Add
+
+```python
+# In main.py
+
+@app.get("/api/ensemble/{game_id}")
+async def get_ensemble_analysis(game_id: str):
+    """Get complete ensemble model analysis for a game"""
+    game = tracker.get_game(game_id)
+    if not game:
+        return {"error": "Game not found"}
+    
+    # Get matchup context
+    context = await stats_db.get_matchup_context(
+        game.state.home_team.name,
+        game.state.away_team.name,
+        game.state.sport,
+        game.state.commence_time
+    )
+    
+    # Run ensemble model
+    ensemble = EnsembleModel(stats_db)
+    analysis = await ensemble.analyze_game(game.state, game.odds, context)
+    
+    return analysis
+
+@app.get("/api/positive-ev-opportunities")
+async def get_positive_ev_opportunities():
+    """Get all positive EV opportunities across all games"""
+    games = tracker.get_all_games()
+    opportunities = []
+    
+    ensemble = EnsembleModel(stats_db)
+    
+    for game in games:
+        context = await stats_db.get_matchup_context(
+            game.state.home_team.name,
+            game.state.away_team.name,
+            game.state.sport,
+            game.state.commence_time
+        )
+        
+        analysis = await ensemble.analyze_game(game.state, game.odds, context)
+        
+        if analysis['is_positive_ev']:
+            opportunities.append({
+                'game_id': game.state.id,
+                'teams': f"{game.state.away_team.name} @ {game.state.home_team.name}",
+                'analysis': analysis
+            })
+    
+    # Sort by EV
+    opportunities.sort(key=lambda x: x['analysis']['expected_value'], reverse=True)
+    
+    return opportunities
+
+@app.get("/api/team-stats/{team_name}")
+async def get_team_statistics(team_name: str, sport: str = "basketball_nba"):
+    """Get comprehensive team statistics"""
+    stats = await stats_db.get_team_stats(team_name, sport)
+    return stats
+
+@app.get("/api/matchup-context/{home_team}/{away_team}")
+async def get_matchup_context_api(
+    home_team: str, 
+    away_team: str,
+    sport: str = "basketball_nba"
+):
+    """Get full matchup context (rest, injuries, etc.)"""
+    context = await stats_db.get_matchup_context(
+        home_team,
+        away_team,
+        sport,
+        datetime.now()
+    )
+    return context
+
+@app.get("/api/closing-line-value/{team}")
+async def get_clv(team: str, sport: str = "basketball_nba", days: int = 30):
+    """Get closing line value stats for a team"""
+    clv = await stats_db.get_closing_line_value(team, sport, days)
+    return clv
+
+@app.post("/api/calculate-ev")
+async def calculate_ev_endpoint(
+    true_probability: float,
+    market_odds: int,
+    bet_amount: float = 100
+):
+    """Calculate expected value for a bet"""
+    ev = EVCalculator.calculate_ev(true_probability, market_odds, bet_amount)
+    return ev
+
+@app.post("/api/kelly-sizing")
+async def kelly_sizing_endpoint(
+    edge: float,
+    odds: int,
+    bankroll: float,
+    kelly_fraction: float = 0.25
+):
+    """Calculate Kelly Criterion bet sizing"""
+    sizing = EVCalculator.kelly_criterion(edge, odds, bankroll, kelly_fraction)
+    return sizing
+```
+
+---
+
+## 🎯 Next Steps for Implementation
+
+### Immediate Actions:
+
+1. **Set up PostgreSQL database**
+   ```bash
+   # Install PostgreSQL
+   # Create database
+   createdb sports_betting
+   
+   # Run schema
+   psql sports_betting < schema.sql
+   ```
+
+2. **Install required packages**
+   ```bash
+   pip install asyncpg numpy pandas beautifulsoup4
+   ```
+
+3. **Create directory structure**
+   ```
+   backend/
+   ├── models/
+   │   ├── stats_database.py
+   │   └── universal.py (existing)
+   ├── strategies/
+   │   ├── strategy_engine.py
+   │   └── ensemble_model.py
+   ├── utils/
+   │   └── ev_calculator.py
+   └── scrapers/
+       ├── teamrankings_scraper.py
+       └── basketball_reference_scraper.py
+   ```
+
+4. **Start with one strategy**
+   - Implement Pace-Based Strategy first
+   - Test with live games
+   - Verify accuracy
+   - Add more strategies incrementally
+
+---
+
+## 📚 Additional Systems to Build
+
+### Priority Order:
+
+1. **Player Props Engine** - Highest ROI potential
+2. **Line Movement Tracker** - Critical for RLM detection
+3. **Injury News Aggregator** - Essential for accuracy
+4. **Kelly Criterion Sizer** - Proper bankroll management
+5. **Middle/Arb Detector** - Guaranteed profits
+6. **Performance Tracker** - Track model accuracy
+7. **Alert System** - Real-time notifications
+8. **Parlay Optimizer** - Build +EV parlays
+
+---
+
+This comprehensive guide gives Claude Code everything needed to implement the advanced betting systems. Save this file as `Advanced_Betting_Systems_Guide.md` and reference it for building out each component!
