@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL: BEFORE MAKING ANY CODE CHANGES ⚠️
+
+**📖 READ FIRST: [CRITICAL_FIXES_DO_NOT_CHANGE.md](./CRITICAL_FIXES_DO_NOT_CHANGE.md)**
+
+This document contains **PROTECTED CODE** that is currently **WORKING IN PRODUCTION**.
+
+**DO NOT modify these sections without explicit user approval:**
+1. Edge scanner sport filtering (edge_scanner.py line 597)
+2. Model performance merge strategy (model_performance.py line 76)
+3. Charts cumulative calculation (model_performance.py line 234)
+4. Frontend API configuration (config.ts)
+5. Time range filter implementation (ModelPerformance.tsx)
+6. UI component ordering (ModelPerformance.tsx)
+7. CSV prediction format (generate_all_sport_predictions.py)
+
+**The user has experienced multiple instances of "fixes" breaking working code.**
+**Stability > Optimization. ASK FIRST before changing anything in the protected sections.**
+
+---
+
 ## IMPORTANT: For ML/Autonomous System Questions
 
 **📖 See [ML_AUTONOMOUS_SYSTEM_REFERENCE.md](./ML_AUTONOMOUS_SYSTEM_REFERENCE.md)** for complete documentation on:
