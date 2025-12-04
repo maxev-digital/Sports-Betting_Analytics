@@ -1,0 +1,175 @@
+# Add this to /root/sporttrader/backend/routes/ui_props.py
+
+@router.get(/props-unified)
+async def get_unified_props(
+    sport: Optional[str] = None,
+    prop_type: Optional[str] = None,
+    player_name: Optional[str] = None,
+    limit: int = 500
+):
+    """
+    Get ALL props from odds feed with ML edges merged in
+    Returns raw odds with edge data highlighted where available
+    """
+    try:
+        # Connect to both databases
+        props_conn = get_db_connection(unified=False)  # player_props.db
+        ml_conn = get_db_connection(unified=True)  # predictions.db
+        
+        props_cursor = props_conn.cursor()
+        ml_cursor = ml_conn.cursor()
+
+        today = get_cst_today()
+
+        # Build query for raw props
+        where_clauses = [date ?]
+        params = [today]
+
+        if sport:
+            where_clauses.append(sport = ?)
+            params.append(sport.lower())
+
+        if prop_type:
+            where_clauses.append(prop_type = ?)
+            params.append(prop_type)
+
+        if player_name:
+            where_clauses.append(player_name LIKE ?)
+            params.append(f%{player_name}%)
+
+        where_sql =  AND .join(where_clauses)
+
+        # Get all raw props grouped by player/prop_type/line to find best odds
+        query = f"""
+            SELECT
+                player_name,
+                team,
+                opponent,
+                prop_type,
+                market_line,
+                sport,
+                date,
+                home_away,
+                GROUP_CONCAT(bookmaker || ':' || COALESCE(over_odds, 0) || ':' || COALESCE(under_odds, 0), '|') as all_odds
+            FROM player_props_lines
+            WHERE {where_sql}
+            GROUP BY player_name, prop_type, market_line, team, opponent
+            ORDER BY date DESC, player_name ASC
+            LIMIT ?
+        """
+        
+        params.append(limit)
+        props_cursor.execute(query, params)
+        raw_props = props_cursor.fetchall()
+
+        # Get ML predictions for today
+        ml_query = """
+            SELECT
+                player_name,
+                prop_type,
+                market_line,
+                recommendation,
+                edge_pct,
+                confidence,
+                predicted_value
+            FROM player_prop_predictions
+            WHERE prediction_date = ?
+              AND recommendation != 'NO_PLAY'
+        """
+        ml_cursor.execute(ml_query, (today,))
+        ml_predictions = {
+            (row[player_name], row[prop_type], row[market_line]): row
+            for row in ml_cursor.fetchall()
+        }
+
+        # Merge props with ML predictions
+        unified_props = []
+        for row in raw_props:
+            player_name = row[player_name]
+            prop_type = row[prop_type]
+            market_line = row[market_line]
+            
+            # Parse all odds to find best
+            all_odds_str = row[all_odds]
+            bookmaker_odds = []
+            best_over = {bookmaker: None, odds: -10000}
+            best_under = {bookmaker: None, odds: -10000}
+            
+            if all_odds_str:
+                for book_data in all_odds_str.split('|'):
+                    parts = book_data.split(':')
+                    if len(parts) == 3:
+                        bookmaker, over_odds, under_odds = parts
+                        over_odds = int(over_odds) if over_odds else None
+                        under_odds = int(under_odds) if under_odds else None
+                        
+                        bookmaker_odds.append({
+                            bookmaker: bookmaker,
+                            over_odds: over_odds,
+                            under_odds: under_odds
+                        })
+                        
+                        # Track best odds (most positive = best)
+                        if over_odds and over_odds > best_over[odds]:
+                            best_over = {bookmaker: bookmaker, odds: over_odds}
+                        if under_odds and under_odds > best_under[odds]:
+                            best_under = {bookmaker: bookmaker, odds: under_odds}
+
+            # Check if this prop has an ML prediction
+            ml_key = (player_name, prop_type, market_line)
+            ml_edge = ml_predictions.get(ml_key)
+            
+            prop_data = {
+                player_name: player_name,
+                team: row[team],
+                opponent: row[opponent],
+                prop_type: prop_type,
+                market_line: market_line,
+                sport: row[sport],
+                date: row[date],
+                home_away: row[home_away],
+                bookmaker_odds: bookmaker_odds,
+                best_over: best_over if best_over[bookmaker] else None,
+                best_under: best_under if best_under[bookmaker] else None,
+                has_edge: ml_edge is not None,
+                ml_recommendation: None,
+                ml_edge_pct: None,
+                ml_confidence: None,
+                ml_predicted_value: None,
+                ml_best_book: None
+            }
+            
+            # Add ML data if available
+            if ml_edge:
+                recommendation = ml_edge[recommendation]
+                prop_data[ml_recommendation] = recommendation
+                prop_data[ml_edge_pct] = ml_edge[edge_pct]
+                prop_data[ml_confidence] = ml_edge[confidence]
+                prop_data[ml_predicted_value] = ml_edge[predicted_value]
+                
+                # Determine best book for ML recommendation
+                if recommendation == OVER:
+                    prop_data[ml_best_book] = best_over[bookmaker] if best_over[bookmaker] else None
+                    prop_data[ml_best_odds] = best_over[odds] if best_over[bookmaker] else None
+                elif recommendation == UNDER:
+                    prop_data[ml_best_book] = best_under[bookmaker] if best_under[bookmaker] else None
+                    prop_data[ml_best_odds] = best_under[odds] if best_under[bookmaker] else None
+
+            unified_props.append(prop_data)
+
+        props_conn.close()
+        ml_conn.close()
+
+        return {
+            success: True,
+            count: len(unified_props),
+            sport: sport or all,
+            props: unified_props,
+            ml_edges_count: sum(1 for p in unified_props if p[has_edge])
+        }
+
+    except Exception as e:
+        logger.error(fError in props-unified: {e})
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

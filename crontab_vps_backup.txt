@@ -1,0 +1,48 @@
+# Alert grading - NO Odds API usage
+# Backup and grading - NO Odds API usage
+# Daily scraping and data collection (NO Odds API usage)
+# Generate all sport predictions once per day (MAIN Odds API usage - ~25 calls)
+# Player Props Grading - runs daily at 3am CST (uses FREE BallDontLie API)
+# REMOVED: Live Monte Carlo (was using ~216 API calls/night)
+# REMOVED: Props workflow (may have used Odds API)
+# Weekly model retraining (Mondays) - NO Odds API usage
+0 2 * * * cd /root/sporttrader/backend && /usr/bin/python3 utils/grade_alerts.py >> /root/sporttrader/logs/alert_grading_cron.log 2>&1
+0 3 * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 -c "from scrapers.props.results_tracker_fixed import PropsResultsTracker; from datetime import date, timedelta; t=PropsResultsTracker(); r=t.grade_previous_day_props(date.today()-timedelta(days=1)); print(r)" >> logs/props_grading.log 2>&1
+0 4 * * 1 cd /root/sporttrader/backend && source venv/bin/activate && python3 ml/autonomous_learning_system.py --sport ncaab >> /root/sporttrader/backend/logs/autonomous_ncaab.log 2>&1
+0 4 * * 1 cd /root/sporttrader/backend && source venv/bin/activate && python3 ml/autonomous_learning_system.py --sport nhl >> /root/sporttrader/backend/logs/autonomous_nhl.log 2>&1
+0 5 * * 1 cd /root/sporttrader/backend && source venv/bin/activate && python3 ml/autonomous_learning_system.py --sport nba >> /root/sporttrader/backend/logs/autonomous_nba.log 2>&1
+0 5 * * 1 cd /root/sporttrader/backend && source venv/bin/activate && python3 ml/autonomous_learning_system.py --sport ncaaf >> /root/sporttrader/backend/logs/autonomous_ncaaf.log 2>&1
+0 5 * * 1 cd /root/sporttrader/backend && source venv/bin/activate && python3 ml/autonomous_learning_system.py --sport nfl >> /root/sporttrader/backend/logs/autonomous_nfl.log 2>&1
+0 6 * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 record_daily_results.py >> logs/results_recorder.log 2>&1
+0 7 * * * cd /root/sporttrader && python3 backend/run_all_scrapers.py >> /root/sporttrader/backend/logs/cron_scraper.log 2>&1
+0 7 * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 grade_yesterday_predictions.py >> logs/grading_daily.log 2>&1
+30 6 * * * cd /root/sporttrader && bash backend/run_enhanced_scrapers.sh >> backend/logs/enhanced_scrapers.log 2>&1
+30 7 * * * cd /root/sporttrader && python3 backend/run_kenpom_fallback.py >> /root/sporttrader/backend/logs/kenpom_scraper.log 2>&1
+55 7 * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 backup_predictions_daily.py >> logs/backup_daily.log 2>&1
+0 * * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 deployment_gate.py --health >> /root/sporttrader/logs/health_check.log 2>&1
+
+# BULLETPROOF: Player Props ML Predictions - runs 90 mins after main models (10:30 AM CST)
+# MAIN PROPS - Runs first
+30 10 * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 -c "from ml.props.predictor import generate_all_props_edges; generate_all_props_edges()" >> logs/props_predictions.log 2>&1
+
+# DFS Correlation Engine - Generate correlated combos from ML predictions (11:00 AM CST)
+# Runs 30 mins after props predictions complete - generates 1500+ correlated 2-3 leg combos
+0 11 * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 -c "from ml.props.correlation_engine import CorrelationEngine; e=CorrelationEngine(sport='nba'); e.predictions_df=e.load_todays_predictions(); e.predictions_df=e.predictions_df.nlargest(100, 'edge') if len(e.predictions_df) > 100 else e.predictions_df; e.calculate_correlation_matrix(); combos=e.generate_combos(min_legs=2, max_legs=3, min_edge=3.0); e.save_combos_to_database(combos); print(f'Generated {len(combos)} DFS combos')" >> logs/dfs_correlation.log 2>&1
+
+0 9,15,4 * * * /usr/local/bin/maxev-autopilot >> /var/www/max-ev-sports/logs/cron.log 2>&1
+35 10 * * * /usr/local/bin/maxev-unified-executive
+35 6 * * * /usr/local/bin/maxev-daily-proof
+# Database-based grading for all sports (ESPN API)
+0 6 * * * cd /root/sporttrader/backend && /usr/bin/python3 grade_predictions_db.py --days 3 >> /root/sporttrader/logs/db_grading.log 2>&1
+# ML Predictions using ACTUAL trained models - runs at 8 AM daily
+
+# ENHANCED ML PREDICTIONS - 7 Model Architecture (XGBoost, LightGBM, RF, Linear, PyTorch, CatBoost, Neural Ensemble)
+# Replaces old 4-model system - runs at 8:05 AM daily (5 mins after data scrapers)
+
+# Daily Systems Check - Comprehensive health monitoring at 11 PM CST
+0 23 * * * cd /root/sporttrader/backend && /usr/bin/python3 comprehensive_daily_systems_check.py >> logs/systems_check.log 2>&1
+# Multi-Sport Player Props Predictions (NBA, NHL, NFL) - 10:30 AM CST
+# MULTI-SPORT PROPS - Runs 15 mins after main props to avoid rate limits
+45 10 * * * cd /root/sporttrader/backend && python3 run_multi_sport_props.py >> logs/props_multi_sport.log 2>&1
+
+5 8 * * * cd /root/sporttrader/backend && source venv/bin/activate && python3 run_ml_predictions_ALL_BET_TYPES.py >> logs/ml_predictions_ENHANCED.log 2>&1
