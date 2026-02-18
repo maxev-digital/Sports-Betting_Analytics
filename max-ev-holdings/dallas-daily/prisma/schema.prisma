@@ -1,0 +1,928 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model local_businesses {
+  id                      String                    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name                    String
+  category                String?
+  address                 String
+  city                    String?
+  state                   String?                   @default("TX")
+  zip_code                String?
+  latitude                Decimal?                  @db.Decimal
+  longitude               Decimal?                  @db.Decimal
+  phone                   String?
+  website                 String?
+  rating                  Decimal?                  @db.Decimal
+  review_count            Int?
+  price_level             Int?
+  photo_url               String?
+  google_place_id         String?                   @unique
+  is_featured             Boolean                   @default(false)
+  is_verified             Boolean                   @default(false)
+  featured_tier           String?
+  view_count              Int                       @default(0)
+  click_count             Int                       @default(0)
+  description             String?
+  hours_of_operation      Json?
+  google_maps_url         String?
+  created_at              DateTime                  @default(now()) @db.Timestamp(6)
+  updated_at              DateTime                  @default(now()) @db.Timestamp(6)
+  photo_urls              String[]                  @default([])
+  alcohol_sales_rank      Int?
+  building_permit         String?
+  business_status         String?
+  construction_end        DateTime?                 @db.Timestamp(6)
+  construction_start      DateTime?                 @db.Timestamp(6)
+  has_liquor_license      Boolean                   @default(false)
+  health_grade            String?
+  health_score            Int?
+  inspection_url          String?
+  last_inspection         DateTime?                 @db.Timestamp(6)
+  monthly_sales           Decimal?                  @db.Decimal
+  permit_status           String?
+  sales_tax_permit        String?
+  tabc_permit             String?
+  taxpayer_number         String?
+  violations              Json?
+  business_type           String?
+  premium_tier            String?                   @default("free") @db.VarChar(20)
+  premium_expires_at      DateTime?                 @db.Timestamp(6)
+  premium_started_at      DateTime?                 @db.Timestamp(6)
+  youtube_url             String?                   @db.VarChar(500)
+  premium_bio             String?
+  specialties             String[]
+  owner_email             String?                   @db.VarChar(255)
+  owner_name              String?                   @db.VarChar(255)
+  owner_verified          Boolean?                  @default(false)
+  claimed_at              DateTime?                 @db.Timestamp(6)
+  dmag_url                String?                   @db.VarChar(500)
+  dmag_awards             Json?
+  featured_in_best_of     Boolean?                  @default(false)
+  best_of_year            Int?
+  best_of_category        String?                   @db.VarChar(100)
+  years_in_business       Int?
+  business_email          String?                   @db.VarChar(255)
+  profile_views           Int?                      @default(0)
+  quote_requests          Int?                      @default(0)
+  phone_clicks            Int?                      @default(0)
+  website_clicks          Int?                      @default(0)
+  newsletter_features     Int?                      @default(0)
+  last_newsletter_feature DateTime?                 @db.Timestamp(6)
+  code_violations         Json?
+  max_occupancy           Int?
+  occupancy_permit        String?
+  occupancy_status        String?
+  occupancy_type          String?
+  permit_issue_date       DateTime?                 @db.Timestamp(6)
+  tabc_violations         Json?
+  tier                    String?                   @default("free") @db.VarChar(20)
+  user_id                 String?
+  phone_verified          Boolean?                  @default(false)
+  claim_token                  String?                   @unique @db.VarChar(255)
+  claim_link_sent_at           DateTime?                 @db.Timestamp(6)
+  claim_link_clicked_at        DateTime?                 @db.Timestamp(6)
+  verification_code            String?                   @db.VarChar(10)
+  verification_code_expires_at DateTime?                 @db.Timestamp(6)
+  verification_attempts        Int?                      @default(0)
+  code_verification_attempts   Int?                      @default(0)
+  email_verified               Boolean?                  @default(false)
+  email_verified_at            DateTime?                 @db.Timestamp(6)
+  business_claim_requests      business_claim_requests[] @relation("business_claims")
+  video_requests               video_requests[]           @relation("business_videos")
+  deals                   deals[]
+  partner_analytics       partner_analytics[]
+  promo_codes             promo_codes[]
+
+  @@index([latitude, longitude])
+  @@index([category])
+  @@index([is_featured, featured_tier])
+  @@index([health_grade])
+  @@index([alcohol_sales_rank])
+  @@index([featured_in_best_of, best_of_year], map: "idx_best_of")
+  @@index([owner_verified, claimed_at], map: "idx_claimed")
+  @@index([premium_expires_at], map: "idx_premium_expires")
+  @@index([premium_tier], map: "idx_premium_tier")
+  @@index([tier], map: "idx_tier")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model articles {
+  id           String              @id @default(dbgenerated("(gen_random_uuid())::text"))
+  studio_id    String              @default("dallas-daily")
+  title        String
+  description  String?
+  content      String?
+  image_url    String?
+  source_name  String
+  source_url   String              @unique
+  category     String              @default("general")
+  published_at DateTime            @db.Timestamp(6)
+  is_featured  Boolean             @default(false)
+  view_count   Int                 @default(0)
+  created_at   DateTime            @default(now()) @db.Timestamp(6)
+  updated_at   DateTime            @default(now()) @db.Timestamp(6)
+  summaries    article_summaries[]
+
+  @@index([category, published_at])
+  @@index([is_featured, published_at])
+}
+
+model article_summaries {
+  id           String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  article_id   String
+  persona_type String
+  persona_name String
+  summary_text String
+  image_urls   String[]
+  model        String?
+  tokens_used  Int?
+  created_at   DateTime @default(now()) @db.Timestamp(6)
+  updated_at   DateTime @default(now()) @db.Timestamp(6)
+  articles     articles @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@unique([article_id, persona_type])
+  @@index([persona_type, created_at])
+}
+
+model deals {
+  id               String            @id @default(dbgenerated("(gen_random_uuid())::text"))
+  business_id      String?
+  business_name    String?
+  title            String
+  description      String?
+  category         String?
+  city             String?
+  image_url        String?
+  discount_amount  String?
+  start_date       DateTime?         @db.Timestamp(6)
+  end_date         DateTime?         @db.Timestamp(6)
+  is_active        Boolean           @default(true)
+  view_count       Int               @default(0)
+  click_count      Int               @default(0)
+  created_at       DateTime          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime          @default(now()) @db.Timestamp(6)
+  dealType         String?           @default("manual")
+  discount_percent Int?
+  discount_price   Decimal?          @db.Decimal
+  expires_at       DateTime?         @db.Timestamp(6)
+  original_price   Decimal?          @db.Decimal
+  source_name      String?
+  source_url       String?
+  local_businesses local_businesses? @relation(fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@index([business_id])
+  @@index([is_active, end_date])
+  @@index([dealType])
+  @@index([city])
+  @@index([category])
+}
+
+model users {
+  id                     String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  email                  String    @unique
+  name                   String?
+  password_hash          String?
+  role                   String    @default("user")
+  subscription_tier      String    @default("free") @db.VarChar(20)
+  subscription_status    String    @default("inactive") @db.VarChar(20)
+  stripe_customer_id     String?   @db.VarChar(255)
+  stripe_subscription_id String?   @db.VarChar(255)
+  email_verified         Boolean   @default(false)
+  created_at             DateTime  @default(now()) @db.Timestamp(6)
+  updated_at             DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([email])
+  @@index([subscription_tier])
+  @@index([stripe_customer_id])
+}
+
+model sessions {
+  id            String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  session_token String   @unique
+  user_id       String
+  expires       DateTime @db.Timestamp(6)
+  created_at    DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([user_id])
+}
+
+model analytics_events {
+  id         String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  user_id    String?
+  event_type String
+  event_data Json?
+  ip_address String?
+  user_agent String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([event_type, created_at])
+}
+
+model commercial_agents {
+  id                   String                  @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name                 String
+  title                String?
+  company              String                  @default("Structure Commercial")
+  email                String?
+  phone                String?
+  direct_line          String?
+  bio                  String?
+  credentials          String[]
+  specializations      String[]
+  photo_url            String?
+  profile_url          String?
+  external_profile_url String?
+  linkedin_url         String?
+  transaction_volume   BigInt?
+  managed_sqft         Int?
+  years_experience     Int?
+  is_featured          Boolean                 @default(false)
+  is_partner           Boolean                 @default(false)
+  display_order        Int?
+  created_at           DateTime                @default(now()) @db.Timestamp(6)
+  updated_at           DateTime                @default(now()) @db.Timestamp(6)
+  office_address       String?
+  screenshot_url       String?
+  slug                 String?                 @unique
+  properties           commercial_properties[]
+
+  @@index([is_featured])
+  @@index([is_partner])
+  @@index([slug])
+}
+
+model commercial_properties {
+  id             String             @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name           String
+  address        String
+  city           String?
+  state          String?            @default("TX")
+  zip_code       String?
+  property_type  String?
+  total_sqft     Int?
+  available_sqft Int?
+  price_per_sqft Decimal?           @db.Decimal
+  lease_type     String?
+  building_class String?
+  features       Json?
+  images         String[]
+  description    String?
+  external_url   String?
+  agent_id       String?
+  company        String             @default("Structure Commercial")
+  is_featured    Boolean            @default(false)
+  status         String             @default("available")
+  created_at     DateTime           @default(now()) @db.Timestamp(6)
+  updated_at     DateTime           @default(now()) @db.Timestamp(6)
+  agent          commercial_agents? @relation(fields: [agent_id], references: [id])
+
+  @@index([agent_id])
+  @@index([is_featured])
+  @@index([property_type])
+  @@index([status])
+}
+
+model residential_properties {
+  id             String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  listing_id     String?  @unique
+  address        String
+  city           String?
+  state          String?  @default("TX")
+  zip_code       String?
+  price          Int?
+  bedrooms       Int?
+  bathrooms      Decimal? @db.Decimal
+  sqft           Int?
+  lot_sqft       Int?
+  property_type  String?
+  year_built     Int?
+  images         String[]
+  description    String?
+  features       Json?
+  listing_url    String?
+  status         String   @default("for_sale")
+  days_on_market Int?
+  is_featured    Boolean  @default(false)
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  updated_at     DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([city])
+  @@index([price])
+  @@index([bedrooms])
+  @@index([status])
+  @@index([is_featured])
+}
+
+model promo_codes {
+  id             String              @id @default(dbgenerated("(gen_random_uuid())::text"))
+  business_id    String
+  code           String              @unique @db.VarChar(50)
+  discount_type  String              @db.VarChar(20)
+  discount_value Decimal?            @db.Decimal(10, 2)
+  description    String
+  valid_from     DateTime            @db.Timestamp(6)
+  valid_until    DateTime            @db.Timestamp(6)
+  is_active      Boolean             @default(true)
+  views          Int                 @default(0)
+  clicks         Int                 @default(0)
+  redemptions    Int                 @default(0)
+  total_revenue  Decimal             @default(0) @db.Decimal(10, 2)
+  created_at     DateTime            @default(now()) @db.Timestamp(6)
+  updated_at     DateTime            @default(now()) @db.Timestamp(6)
+  events         promo_code_events[]
+  business       local_businesses    @relation(fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@index([business_id])
+  @@index([code])
+  @@index([is_active, valid_until])
+}
+
+model promo_code_events {
+  id              String      @id @default(dbgenerated("(gen_random_uuid())::text"))
+  promo_code_id   String
+  event_type      String      @db.VarChar(20)
+  sale_amount     Decimal?    @db.Decimal(10, 2)
+  customer_name   String?     @db.VarChar(255)
+  event_timestamp DateTime    @default(now()) @db.Timestamp(6)
+  ip_address      String?     @db.VarChar(50)
+  user_agent      String?
+  promo_code      promo_codes @relation(fields: [promo_code_id], references: [id], onDelete: Cascade)
+
+  @@index([promo_code_id, event_type])
+  @@index([event_timestamp])
+}
+
+model partner_analytics {
+  id                String           @id @default(dbgenerated("(gen_random_uuid())::text"))
+  business_id       String
+  period_type       String           @db.VarChar(20)
+  period_start      DateTime         @db.Timestamp(6)
+  period_end        DateTime         @db.Timestamp(6)
+  promo_redemptions Int              @default(0)
+  promo_revenue     Decimal          @default(0) @db.Decimal(10, 2)
+  calculated_roi    Decimal          @default(0) @db.Decimal(10, 2)
+  profile_views     Int?             @default(0)
+  phone_clicks      Int?             @default(0)
+  website_clicks    Int?             @default(0)
+  created_at        DateTime         @default(now()) @db.Timestamp(6)
+  updated_at        DateTime         @default(now()) @db.Timestamp(6)
+  business          local_businesses @relation(fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@index([business_id, period_type, period_start])
+  @@index([period_start, period_end])
+}
+
+model business_claim_requests {
+  id                 String           @id @default(dbgenerated("(gen_random_uuid())::text"))
+  business_id        String
+  email              String           @db.VarChar(255)
+  verification_token String           @unique @db.VarChar(255)
+  status             String           @default("pending") @db.VarChar(50)
+  expires_at         DateTime         @db.Timestamp(6)
+  verified_at        DateTime?        @db.Timestamp(6)
+  created_at         DateTime         @default(now()) @db.Timestamp(6)
+  updated_at         DateTime         @default(now()) @db.Timestamp(6)
+  local_businesses   local_businesses @relation("business_claims", fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@index([verification_token], map: "idx_business_claim_token")
+  @@index([status], map: "idx_business_claim_status")
+  @@index([business_id], map: "idx_business_claim_business_id")
+}
+
+model newsletter_issues {
+  id                 String             @id
+  issue_number       Int?
+  issue_date         DateTime           @db.Date
+  frequency          String
+  content            Json
+  subject_line       String
+  preview_text       String?
+  status             String?            @default("draft")
+  generated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  approved_at        DateTime?          @db.Timestamp(6)
+  approved_by        String?
+  sent_at            DateTime?          @db.Timestamp(6)
+  total_recipients   Int?               @default(0)
+  delivered_count    Int?               @default(0)
+  opened_count       Int?               @default(0)
+  clicked_count      Int?               @default(0)
+  unsubscribed_count Int?               @default(0)
+  created_at         DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?          @default(now()) @db.Timestamp(6)
+  newsletter_sends   newsletter_sends[]
+
+  @@index([issue_date], map: "idx_newsletter_issues_date")
+  @@index([status], map: "idx_newsletter_issues_status")
+}
+
+model newsletter_sends {
+  id                   String            @id
+  issue_id             String
+  subscriber_id        String
+  personalized_content Json?
+  sent_at              DateTime?         @db.Timestamp(6)
+  delivered_at         DateTime?         @db.Timestamp(6)
+  opened_at            DateTime?         @db.Timestamp(6)
+  clicked_at           DateTime?         @db.Timestamp(6)
+  unsubscribed_at      DateTime?         @db.Timestamp(6)
+  bounced_at           DateTime?         @db.Timestamp(6)
+  status               String?           @default("pending")
+  email_id             String?
+  error_message        String?
+  created_at           DateTime?         @default(now()) @db.Timestamp(6)
+  newsletter_issues    newsletter_issues @relation(fields: [issue_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subscribers          subscribers       @relation(fields: [subscriber_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([issue_id], map: "idx_newsletter_sends_issue")
+  @@index([status], map: "idx_newsletter_sends_status")
+  @@index([subscriber_id], map: "idx_newsletter_sends_subscriber")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model automation_workflows {
+  id                   String                 @id
+  name                 String
+  workflow_type        String
+  trigger_event        String
+  trigger_conditions   Json?
+  emails               Json
+  active               Boolean?               @default(true)
+  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamp(6)
+  workflow_enrollments workflow_enrollments[]
+
+  @@index([active], map: "idx_automation_workflows_active")
+  @@index([workflow_type], map: "idx_automation_workflows_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model email_campaigns {
+  id                 String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name               String
+  subject            String
+  body_html          String
+  body_text          String
+  from_name          String        @default("DFW Daily")
+  from_email         String        @default("hello@dfwdaily.com")
+  filter_city        String?
+  filter_category    String?
+  filter_verified    Boolean?
+  status             String        @default("draft")
+  total_recipients   Int?          @default(0)
+  sent_count         Int?          @default(0)
+  failed_count       Int?          @default(0)
+  opens_count        Int?          @default(0)
+  clicks_count       Int?          @default(0)
+  unsubscribes_count Int?          @default(0)
+  created_at         DateTime?     @default(now()) @db.Timestamp(6)
+  sent_at            DateTime?     @db.Timestamp(6)
+  channel            String?       @default("email")
+  body_sms           String?
+  sms_sent_count     Int?          @default(0)
+  sms_failed_count   Int?          @default(0)
+  email_sends        email_sends[]
+  sms_sends          sms_sends[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model email_sends {
+  id              String          @id @default(dbgenerated("(gen_random_uuid())::text"))
+  campaign_id     String
+  business_id     String
+  email           String
+  status          String          @default("pending")
+  error_message   String?
+  opened_at       DateTime?       @db.Timestamp(6)
+  clicked_at      DateTime?       @db.Timestamp(6)
+  unsubscribed_at DateTime?       @db.Timestamp(6)
+  sent_at         DateTime?       @db.Timestamp(6)
+  created_at      DateTime?       @default(now()) @db.Timestamp(6)
+  email_campaigns email_campaigns @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([campaign_id], map: "idx_email_sends_campaign")
+  @@index([status], map: "idx_email_sends_status")
+}
+
+model email_unsubscribes {
+  id              String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  email           String    @unique
+  reason          String?
+  unsubscribed_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([email], map: "idx_email_unsubscribes_email")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sms_opt_outs {
+  id           String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  phone        String    @unique
+  reason       String?
+  opted_out_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([phone], map: "idx_sms_opt_outs_phone")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sms_sends {
+  id              String          @id @default(dbgenerated("(gen_random_uuid())::text"))
+  campaign_id     String
+  business_id     String
+  phone           String
+  status          String          @default("pending")
+  error_message   String?
+  twilio_sid      String?
+  clicked_at      DateTime?       @db.Timestamp(6)
+  opted_out_at    DateTime?       @db.Timestamp(6)
+  delivered_at    DateTime?       @db.Timestamp(6)
+  sent_at         DateTime?       @db.Timestamp(6)
+  created_at      DateTime?       @default(now()) @db.Timestamp(6)
+  email_campaigns email_campaigns @relation(fields: [campaign_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([campaign_id], map: "idx_sms_sends_campaign")
+  @@index([phone], map: "idx_sms_sends_phone")
+  @@index([status], map: "idx_sms_sends_status")
+}
+
+model subscriber_preference_changes {
+  id            String      @id
+  subscriber_id String
+  changed_field String
+  old_value     Json?
+  new_value     Json?
+  changed_at    DateTime?   @default(now()) @db.Timestamp(6)
+  subscribers   subscribers @relation(fields: [subscriber_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([subscriber_id], map: "idx_subscriber_preference_changes_subscriber")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model subscribers {
+  id                            String                          @id
+  email                         String                          @unique
+  phone                         String?
+  name                          String?
+  city                          String?
+  zip_code                      String?
+  interests                     Json?                           @default("[]")
+  locations                     Json?                           @default("[]")
+  frequency                     String?                         @default("daily")
+  timezone                      String?                         @default("America/Chicago")
+  status                        String?                         @default("pending")
+  confirmed_at                  DateTime?                       @db.Timestamp(6)
+  unsubscribed_at               DateTime?                       @db.Timestamp(6)
+  last_opened_at                DateTime?                       @db.Timestamp(6)
+  last_clicked_at               DateTime?                       @db.Timestamp(6)
+  total_opens                   Int?                            @default(0)
+  total_clicks                  Int?                            @default(0)
+  signup_source                 String?
+  referral_code                 String?
+  created_at                    DateTime?                       @default(now()) @db.Timestamp(6)
+  updated_at                    DateTime?                       @default(now()) @db.Timestamp(6)
+  newsletter_sends              newsletter_sends[]
+  subscriber_preference_changes subscriber_preference_changes[]
+  workflow_enrollments          workflow_enrollments[]
+
+  @@index([email], map: "idx_subscribers_email")
+  @@index([interests], map: "idx_subscribers_interests", type: Gin)
+  @@index([locations], map: "idx_subscribers_locations", type: Gin)
+  @@index([status], map: "idx_subscribers_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workflow_enrollments {
+  id                   String               @id
+  workflow_id          String
+  subscriber_id        String
+  current_step         Int?                 @default(0)
+  completed_steps      Json?                @default("[]")
+  status               String?              @default("active")
+  enrolled_at          DateTime?            @default(now()) @db.Timestamp(6)
+  completed_at         DateTime?            @db.Timestamp(6)
+  next_send_at         DateTime?            @db.Timestamp(6)
+  created_at           DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at           DateTime?            @default(now()) @db.Timestamp(6)
+  subscribers          subscribers          @relation(fields: [subscriber_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  automation_workflows automation_workflows @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([next_send_at], map: "idx_workflow_enrollments_next_send")
+  @@index([status], map: "idx_workflow_enrollments_status")
+  @@index([subscriber_id], map: "idx_workflow_enrollments_subscriber")
+  @@index([workflow_id], map: "idx_workflow_enrollments_workflow")
+}
+
+model newsletter_templates {
+  id              String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name            String
+  description     String?
+  html_content    String
+  placeholders    String[]
+  thumbnail_url   String?
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+  updated_at      DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([is_active])
+}
+
+model video_requests {
+  id               String            @id @default(dbgenerated("(gen_random_uuid())::text"))
+  business_id      String
+  business_name    String            @db.VarChar(255)
+  contact_name     String            @db.VarChar(255)
+  contact_email    String            @db.VarChar(255)
+  contact_phone    String?           @db.VarChar(50)
+  services         String
+  tagline          String?           @db.VarChar(500)
+  tone             String            @default("professional") @db.VarChar(50)
+  assets_notes     String?
+  additional_notes String?
+  status           String            @default("requested") @db.VarChar(50)
+  youtube_url      String?           @db.VarChar(500)
+  youtube_title    String?           @db.VarChar(255)
+  admin_notes      String?
+  requested_at     DateTime          @default(now()) @db.Timestamp(6)
+  in_production_at DateTime?         @db.Timestamp(6)
+  published_at     DateTime?         @db.Timestamp(6)
+  updated_at       DateTime          @default(now()) @db.Timestamp(6)
+  local_businesses local_businesses  @relation("business_videos", fields: [business_id], references: [id], onDelete: Cascade)
+
+  @@index([business_id], map: "idx_video_requests_business")
+  @@index([status], map: "idx_video_requests_status")
+}
+
+model outreach_config {
+  id                    Int       @id @default(1)
+  is_paused             Boolean   @default(false)
+  daily_cap             Int       @default(300)
+  contact_cooldown_days Int       @default(30)
+  template_type         String    @default("auto") @db.VarChar(20)
+  last_run_at           DateTime?
+  last_run_sent         Int       @default(0)
+  last_run_failed       Int       @default(0)
+  last_run_skipped      Int       @default(0)
+  total_sent_alltime    Int       @default(0)
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+}
+
+model business_discovery_log {
+  id          String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  source      String   @db.VarChar(50)
+  city        String   @db.VarChar(100)
+  category    String   @db.VarChar(100)
+  discovered  Int      @default(0)
+  inserted    Int      @default(0)
+  duplicates  Int      @default(0)
+  errors      Int      @default(0)
+  ran_at      DateTime @default(now())
+
+  @@index([ran_at])
+  @@index([source])
+}
+
+model business_enrichment_log {
+  id               String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  business_id      String
+  enrichment_type  String   @db.VarChar(50)
+  status           String   @db.VarChar(20)
+  result           String?  @db.VarChar(255)
+  ran_at           DateTime @default(now())
+
+  @@index([business_id])
+  @@index([ran_at])
+}
+
+// ============================================================
+// HIGH SCHOOL SPORTS - DFW Metroplex
+// ============================================================
+
+model hs_schools {
+  id                  String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name                String   // "Allen High School"
+  short_name          String   // "Allen"
+  mascot              String?  // "Eagles"
+  isd                 String   // "Allen ISD"
+  city                String
+  county              String   // "Collin", "Dallas", "Tarrant", "Denton", "Rockwall", etc.
+  state               String   @default("TX")
+  address             String?
+  zip_code            String?
+  uil_classification  String   // "6A", "5A", "4A", "3A", "2A", "1A"
+  enrollment          Int?
+  colors_primary      String?  // e.g. "#1A237E"
+  colors_secondary    String?
+  mascot_image_url    String?
+  athletic_website    String?
+  athletic_net_id     String?  @unique // AthleticNet school ID for API sync
+  maxpreps_slug       String?  // maxpreps.com URL slug
+  uil_school_id       String?  // UIL internal ID
+  latitude            Decimal? @db.Decimal
+  longitude           Decimal? @db.Decimal
+  created_at          DateTime @default(now()) @db.Timestamp(6)
+  updated_at          DateTime @default(now()) @db.Timestamp(6)
+
+  home_games           hs_games[]           @relation("HomeSchool")
+  away_games           hs_games[]           @relation("AwaySchool")
+  track_results        hs_track_results[]
+  athletes             hs_athletes[]
+  standings            hs_standings[]
+  district_memberships hs_school_districts[]
+
+  @@index([isd])
+  @@index([county])
+  @@index([uil_classification])
+  @@index([city])
+}
+
+model hs_districts {
+  id             String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name           String   // "District 5-6A"
+  number         String   // "5"
+  classification String   // "6A"
+  region         String?  // "Region 2"
+  sport          String   // "Football", "Basketball", "Track & Field", "All"
+  season_year    Int
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+
+  schools   hs_school_districts[]
+  standings hs_standings[]
+
+  @@unique([number, classification, sport, season_year])
+  @@index([classification, sport, season_year])
+}
+
+model hs_school_districts {
+  id          String @id @default(dbgenerated("(gen_random_uuid())::text"))
+  school_id   String
+  district_id String
+  sport       String
+  season_year Int
+
+  school   hs_schools   @relation(fields: [school_id], references: [id])
+  district hs_districts @relation(fields: [district_id], references: [id])
+
+  @@unique([school_id, district_id, sport, season_year])
+  @@index([school_id, sport])
+  @@index([district_id])
+}
+
+model hs_standings {
+  id                    String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  school_id             String
+  district_id           String
+  sport                 String
+  season_year           Int
+  overall_wins          Int      @default(0)
+  overall_losses        Int      @default(0)
+  overall_ties          Int      @default(0)
+  district_wins         Int      @default(0)
+  district_losses       Int      @default(0)
+  district_ties         Int      @default(0)
+  points_for            Int?
+  points_against        Int?
+  district_rank         Int?
+  playoff_seed          Int?
+  made_playoffs         Boolean  @default(false)
+  playoff_round_reached String?  // "Bi-District", "Area", "Regional QF", "Regional Final", "State SF", "State Final", "State Champion"
+  updated_at            DateTime @default(now()) @db.Timestamp(6)
+
+  school   hs_schools   @relation(fields: [school_id], references: [id])
+  district hs_districts @relation(fields: [district_id], references: [id])
+
+  @@unique([school_id, sport, season_year])
+  @@index([sport, season_year])
+  @@index([district_id, sport, season_year])
+}
+
+model hs_games {
+  id             String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  home_school_id String?
+  away_school_id String?
+  sport          String
+  game_date      DateTime  @db.Timestamp(6)
+  home_score     Int?
+  away_score     Int?
+  is_district    Boolean   @default(false)
+  is_playoff     Boolean   @default(false)
+  playoff_round  String?
+  season_year    Int
+  location       String?
+  venue          String?
+  notes          String?
+  source         String?   // "UIL", "MaxPreps", "Manual", "ScoreStream"
+  created_at     DateTime  @default(now()) @db.Timestamp(6)
+
+  home_school hs_schools? @relation("HomeSchool", fields: [home_school_id], references: [id])
+  away_school hs_schools? @relation("AwaySchool", fields: [away_school_id], references: [id])
+
+  @@index([sport, season_year])
+  @@index([game_date])
+  @@index([home_school_id, sport])
+}
+
+model hs_track_meets {
+  id                   String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name                 String
+  meet_date            DateTime @db.Timestamp(6)
+  location             String?
+  city                 String?
+  athletic_net_meet_id String?  @unique
+  season_year          Int
+  meet_type            String   // "Invitational", "District", "Area", "Regional", "State"
+  gender               String?  // "M", "F", "Mixed"
+  created_at           DateTime @default(now()) @db.Timestamp(6)
+
+  results hs_track_results[]
+
+  @@index([season_year, meet_type])
+  @@index([meet_date])
+}
+
+model hs_track_results {
+  id             String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  meet_id        String
+  school_id      String
+  athlete_name   String
+  athlete_grade  Int?     // 9, 10, 11, 12
+  gender         String   // "M", "F"
+  event          String   // "100m", "200m", "400m", "800m", "1600m", "3200m", "110mH", "300mH", "4x100", "4x200", "4x400", "4x800", "High Jump", "Long Jump", "Triple Jump", "Pole Vault", "Shot Put", "Discus", "Javelin"
+  result         String   // "10.45" or "58-03.00"
+  result_seconds Decimal? @db.Decimal // for time events converted to seconds for sorting
+  result_meters  Decimal? @db.Decimal // for field events in meters for sorting
+  place          Int?
+  wind           String?  // wind reading for sprints (e.g. "+1.2")
+  is_pr          Boolean  @default(false)
+  is_season_best Boolean  @default(false)
+  relay_legs     String?  // for relays: comma-separated leg runner names
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+
+  meet   hs_track_meets @relation(fields: [meet_id], references: [id])
+  school hs_schools     @relation(fields: [school_id], references: [id])
+
+  @@index([school_id, event])
+  @@index([gender, event, result_seconds])
+  @@index([meet_id])
+}
+
+model hs_athletes {
+  id                      String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name                    String
+  school_id               String
+  grad_year               Int?
+  gender                  String   // "M", "F"
+  athletic_net_athlete_id String?  @unique
+  events                  String[] @default([])
+  created_at              DateTime @default(now()) @db.Timestamp(6)
+  updated_at              DateTime @default(now()) @db.Timestamp(6)
+
+  school hs_schools      @relation(fields: [school_id], references: [id])
+  prs    hs_athlete_prs[]
+
+  @@index([school_id])
+  @@index([name])
+}
+
+model hs_athlete_prs {
+  id             String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  athlete_id     String
+  event          String
+  pr_result      String    // human readable: "4:12.45" or "52-06.00"
+  pr_seconds     Decimal?  @db.Decimal // for sorting time events
+  pr_meters      Decimal?  @db.Decimal // for sorting field events
+  pr_date        DateTime? @db.Timestamp(6)
+  season_year    Int?
+  is_lifetime_pr Boolean   @default(true)
+  updated_at     DateTime  @default(now()) @db.Timestamp(6)
+
+  athlete hs_athletes @relation(fields: [athlete_id], references: [id])
+
+  @@unique([athlete_id, event])
+  @@index([event, pr_seconds])
+}
+
+model scheduled_content {
+  id             String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  content_type   String    @db.VarChar(50)
+  title          String    @db.VarChar(500)
+  content        Json
+  scheduled_for  DateTime  @db.Timestamp(6)
+  publish_status String    @default("scheduled") @db.VarChar(50)
+  published_at   DateTime? @db.Timestamp(6)
+  platforms      String[]
+  metadata       Json?
+  error_message  String?
+  created_at     DateTime  @default(now()) @db.Timestamp(6)
+  updated_at     DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([publish_status])
+  @@index([scheduled_for])
+}
