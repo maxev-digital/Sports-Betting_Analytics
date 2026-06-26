@@ -179,3 +179,18 @@ backend/USER_ACCOUNTS_*.txt
 # Large build artifacts
 frontend/dist-electron/
 backend/database/*.db.old_local
+
+# ML Models — stored in Azure ML registry, not git
+*.joblib
+*.pkl
+*.pickle
+catboost_info/
+
+# KEEP_* backup files cluttering the codebase
+*.KEEP_*
+*_WORKING_*.tsx
+*_BEFORE_*.py
+*.server_version
+*.local_backup
+*_DEPLOYED.tsx
+*_BROKEN_*.py

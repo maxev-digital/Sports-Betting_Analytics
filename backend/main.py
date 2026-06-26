@@ -2777,7 +2777,7 @@ async def get_nba_props_with_edges(min_edge_pct: float = 5.0):
         logger.info(f"Fetching ML NBA props with edges (min_edge: {min_edge_pct}%)")
 
         # Connect to ML props database
-        db_path = "D:/backend/data/player_props.db"
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "player_props.db")
         if not os.path.exists(db_path):
             logger.warning(f"ML props database not found at {db_path}")
             return {

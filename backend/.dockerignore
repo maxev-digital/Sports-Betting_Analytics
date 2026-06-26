@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.env.*
+*.db
+*.sqlite
+*.log
+logs/
+.venv/
+venv/
+*.joblib
+*.pkl
+catboost_info/
+node_modules/
+.git/
