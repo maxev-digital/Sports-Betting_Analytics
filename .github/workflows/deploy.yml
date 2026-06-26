@@ -76,7 +76,7 @@ jobs:
       - name: Install and build
         run: |
           npm ci --ignore-scripts
-          npm run build
+          npx vite build
         working-directory: frontend
         env:
           VITE_API_URL: https://maxev-sports-api.azurewebsites.net
